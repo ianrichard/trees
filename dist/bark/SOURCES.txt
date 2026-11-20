@@ -1,0 +1,12 @@
+Bark texture sources, CC0
+
+Oak — Jolcham Oak Bark 01 by Charlotte Baglioni, Poly Haven
+https://polyhaven.com/a/jolcham_oak_bark_01
+
+Birch — Birch Bark 01 by Dorian Zgraggen, cgbookcase
+https://www.cgbookcase.com/textures/birch-bark-01
+
+Pine — Pine Bark by Dimitrios Savva, Poly Haven
+https://polyhaven.com/a/pine_bark
+
+The textures were resized and encoded as WebP. The birch normal map comes from the source height map.
