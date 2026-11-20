@@ -18,7 +18,13 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 6000);
 const controls = new OrbitControls(camera, canvas);
+// Light damping: the view follows the hand and settles in a few frames instead of drifting.
 controls.enableDamping = true;
+controls.dampingFactor = 0.22;
+controls.rotateSpeed = 0.8;
+controls.zoomSpeed = 1.4;
+controls.zoomToCursor = true;
+controls.screenSpacePanning = true;
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 2;
 controls.maxDistance = 220;
