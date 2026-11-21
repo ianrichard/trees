@@ -45,7 +45,7 @@ The seed is the position, quantized to centimeters. Moving a tree re-rolls its b
 - **Light (`lib/outdoors.js`).**
   - A Preetham sky is the background. A PMREM prefilter of that same sky gives the ambient light.
   - The sun is a shadowing directional light along the sky's sun vector.
-  - The fog color is read back from the sky and tone-mapped in JavaScript, because three.js applies fog after tone mapping. This way the ground melts into the horizon.
+  - Haze is optional and off by default, so nothing in the distance is hidden. The **Haze** lever (`outdoors.setHaze(amount)`) turns it on: its colour is read back from the sky, so the ground melts into the horizon. On screen it is tone-mapped in JavaScript, because three.js applies fog after tone mapping; offscreen pipelines (TAA, Alian's composer) use the raw sky radiance.
 
 Every module takes `THREE` as an argument, as `packages/3d/src/shape/lighting.js` does in Alian.
 
@@ -69,7 +69,7 @@ Every module takes `THREE` as an argument, as `packages/3d/src/shape/lighting.js
   - `vary` adds seeded wobble, so no two hills are clones.
 - **Blending:** raises combine by smooth maximum and hollows by smooth minimum. Overlapping hills make a saddle, and authoring order never matters.
 - **Placement:** children stand at the grade, so `y` is relative to the ground under them.
-- **Horizon:** past the authored extent, the ground blends to the lowest height along that edge and runs flat to the horizon into the sky-matched fog. A pond does not sink the horizon.
+- **Horizon:** past the authored extent, the ground blends to the lowest height along that edge and runs flat to the horizon (into the sky-matched haze when it is on). A pond does not sink the horizon.
 - **Mesh:** a fine grid (at most 220 cells across) plus horizon rings that share its edge resolution, so there are no cracks.
 - **Shading:** steep slopes tint toward soil, and tree crowns bake soft occlusion into the grade as their contact shadow.
 - **Shorthand:** an array document is still shorthand for the ground's children, so `[{ "use": "tree" }]` works.

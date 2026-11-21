@@ -277,7 +277,9 @@ function syncLevers() {
 
 /* ---------------------------------------------------------------- light and wind */
 
-const hourIn = $('hour'), windIn = $('wind');
+const hourIn = $('hour'), windIn = $('wind'), hazeIn = $('haze');
+const setHaze = () => { outdoors.setHaze(+hazeIn.value); $('haze-out').textContent = +hazeIn.value === 0 ? 'Off' : `${Math.round(+hazeIn.value * 100)}%`; };
+hazeIn.addEventListener('input', setHaze);
 const hourText = (h) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
 let pendingHour = null;
 hourIn.addEventListener('input', () => { pendingHour = +hourIn.value; $('hour-out').textContent = hourText(+hourIn.value); });
@@ -390,6 +392,7 @@ function tick(t, dt) {
 outdoors.setHour(+hourIn.value);
 $('hour-out').textContent = hourText(+hourIn.value);
 forest.uniforms.uWind.value = +windIn.value;
+setHaze();
 const start = location.hash.slice(1);
 await show(views[start] ? start : 'homestead');
 loop();

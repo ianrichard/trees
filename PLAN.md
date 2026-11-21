@@ -30,6 +30,18 @@ luminance. "Hot" means the pixels that flicker visibly.
   - Path and rock procedural detail fades to its mean once it is finer than a couple of pixels.
 - **Crossfade dither** steps every frame under TAA, so LOD crossfades integrate into a real blend.
 
+## Haze is off by default
+
+Haze used to hide distant detail. It is now an opt-in lever (0 = off, the default; 1 = the old
+density). Whatever looks wrong without it gets fixed at its cause, not covered up.
+
+What shows without haze (Ridge, drone view): past the authored extent the ground is one flat,
+uniform green that meets the sky in a ruler-straight line. Homestead holds up because its own
+trees and rise fill the horizon. The fix belongs in the far field itself: low-frequency tone and
+colour variation, a distant ring of soft landforms or tree-line silhouettes so the horizon isn't
+straight, and aerial perspective (a physically small, distance-based desaturation, not a fog wall).
+That is POC 4 below.
+
 ## POCs to run next (in order)
 
 1. **Phone budget for TAA.** Run the lab on iPhone at 390 px with `dynamic-hill/timing.js`, TAA
@@ -41,8 +53,9 @@ luminance. "Hot" means the pixels that flicker visibly.
 3. **Composer pass shape.** Wrap `TemporalResolveShader` as an `EffectComposer` pass that reads
    N8AO's beauty depth. It replaces FXAA, and the beauty target can drop its MSAA samples. TAA also
    denoises AO.
-4. **Far-field cover.** Past the grass radius, the ground could carry a grass-like normal and colour
-   response so the grass edge never reads as a ring from the drone view.
+4. **Far field without haze.** Past the authored extent: tone variation, a non-straight horizon
+   (distant soft landforms or tree lines), and a grass-like response past the grass radius so its
+   edge never reads as a ring from the drone view.
 5. **Per-instance ghosting and selection** for instanced trees. Alian's `visibility.js` fades
    meshes, but trees are one draw per kind and variant, so this needs an instance attribute.
 6. **Composition sugar.** Covers and presets (`"cover": "meadow"`, a `woods` mix per region) so a
