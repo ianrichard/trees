@@ -160,6 +160,40 @@ Touching the view hands the camera back to Orbit.
 - Procedural path and stone detail fades to its mean tone once it is finer than a couple of pixels.
 - `__trees.step(dt)` drives exact frames for frame-by-frame pop checks.
 
+## Colour
+
+Leaf colours are calibrated from measured reflectance, not picked by eye:
+
+- Each kind's mean is a sunlit leaf's linear reflectance at about 650, 550 and 450 nm. Broadleaf
+  green is about 0.10–0.13 and conifers about 0.055, with green about 1.8× red and 2.5–2.8× blue
+  as measured leaves show. The old hand-picked greens had 5–8× more green than blue, which is
+  what read as neon.
+- Structured variance:
+  - Sun leaves (upper and outer) are lighter, slightly warmer and less saturated.
+  - Shade leaves are darker and cooler.
+  - New growth at shoot tips is lighter and yellower.
+  - Each leaf varies ±15%.
+- Undersides are paler and greyer than tops. A card's back face is the leaf's underside.
+- Light through backlit leaves is only mildly yellower than reflected light.
+- Grass and ground greens follow the same ratios. Bark comes from CC0 photographs.
+- Stone: limestone is a weathered buff with dark vertical water streaks below its ledges.
+
+## Rock faces
+
+Where a landform's edge is steep (a drop of at least 2.5 m, steeper than about 55°), `lib/cliffs.js`
+builds a wall of bedded rock along the rim. A height field can't hold a vertical or overhanging
+face, but a wall offset per vertex can. Its shape follows how sedimentary bluffs weather:
+
+- **Beds:** layers 0.3–1.5 m thick, alternating hard and soft. Hard beds stand proud with flat,
+  chipped faces; soft beds weather back into notches, so ledges and small overhangs form. Beds
+  wave gently along the face.
+- **Joints:** vertical fractures every 1.5–5 m cut the face into blocks. Each block has retreated
+  its own amount, joints open into V notches, and now and then a block has fallen out.
+- **Caprock:** the top bed is thickest and hardest, so it projects over the rim and rounds back.
+
+The wall's base sinks below grade; a `rocks` group at the foot makes the talus. It is seeded from
+the landform. `params.face: false` turns it off, and `scope.stone.use` picks the stone.
+
 ## Leaf placement data
 
 Each kind carries a measured leaf inclination distribution (`leaf.angle`). Inclination is the leaf surface's angle from horizontal. All kinds share the same placement rules:

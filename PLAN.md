@@ -93,10 +93,18 @@ Shipped, in the lab as the **Texas** scene:
 - **Cliffs.** Steep ground now shades as bedded limestone (wavy beds, weathered seams, joints,
   stains, frequency-clamped) instead of dirt, and an outcrop forms the overhanging caprock.
 
+Then, from Ian's review:
+
+- **Rock faces** (`lib/cliffs.js`): bedded walls along any steep landform edge, built from how
+  bluffs weather (hard and soft beds, joints, fallen blocks, caprock). They replace the smooth
+  shaded slope that read as a dirt bank with stripes.
+- **Calibrated colour:** leaf palettes come from measured reflectance ratios (blue was 2–3× too
+  low, the neon look), with sun, shade, tip and underside variance, and milder transmission.
+
 Still open on these:
 
-- **Cliff relief.** The face is a smooth height field; real bluffs step in and out bed by bed.
-  Next: ledge rows that follow the rim, or displaced cliff strips.
+- **Cliffs:** plan-view embayments (whole sections of face retreating along big joints), talus
+  generated from the beds it fell from, and moss and soil collecting on ledge tops.
 - **Photo textures (S1)** are blocked here: the CC0 hosts aren't on this environment's network.
   Cover and stone shading are built so S1's maps drop into the same slots.
 - **Plants are static.** Yucca and sotol leaves could take the grass sway cheaply.
