@@ -12,6 +12,7 @@ import { buildHouse } from './lib/house.js';
 import { createGrass } from './lib/grass.js';
 import { createTour, createWalk } from './lib/explore.js';
 import { createTemporalAA } from './lib/taa.js';
+import { buildPlants, plantMaterial } from './lib/plants.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -75,6 +76,7 @@ const grass = createGrass(THREE, { uniforms: forest.uniforms, stable: lab.get('g
 scene.add(grass.mesh);
 const features = new THREE.Group();
 scene.add(features);
+const plantMat = plantMaterial(THREE);
 const stones = new Map();
 const stoneFor = (kind) => { if (!stones.has(kind)) stones.set(kind, stoneMaterial(THREE, kind)); return stones.get(kind); };
 
@@ -101,12 +103,14 @@ const fresh = {
   grove: async () => groveDoc(),
   homestead: async () => (await fetch('scenes/homestead.json')).json(),
   ridge: async () => (await fetch('scenes/ridge.json')).json(),
+  texas: async () => (await fetch('scenes/texas.json')).json(),
 };
 const views = {
   specimen: { doc: null, eye: [13, 4.2, 15], target: [0, 4.2, 0] },
   grove: { doc: null, eye: [26, 9, 46], target: [0, 4, -6] },
   homestead: { doc: null, eye: [24, 8, 30], target: [-2, 2.5, -8] },
   ridge: { doc: null, eye: [64, 20, 54], target: [4, 5, -14] },
+  texas: { doc: null, eye: [46, 12, 44], target: [-8, 5, -16] },
 };
 let view = 'homestead';
 
@@ -165,6 +169,11 @@ function apply(doc, { write = true } = {}) {
       features.add(m);
     }
     for (const H of ground.houses) features.add(buildHouse(THREE, H, ground.heightAt));
+    if (resolved.plants.length) {
+      const m = new THREE.Mesh(buildPlants(THREE, resolved.plants, ground.heightAt), plantMat);
+      m.castShadow = m.receiveShadow = true; m.name = 'plants';
+      features.add(m);
+    }
     grass.setGround(ground);
     buildGround(resolved.scene, forest.occluders());
     // Compile every shader variant now (far-detail trees included), so the first tree to change
@@ -178,6 +187,7 @@ function apply(doc, { write = true } = {}) {
     const bits = [`${trees.length} trees`];
     if (ground.rocks.length) bits.push(`${ground.rocks.length} rocks`);
     if (ground.landforms) bits.push(`${ground.landforms} landforms`);
+    if (resolved.plants.length) bits.push(`${resolved.plants.length} plants`);
     if (ground.paths.length) bits.push(`${ground.paths.length} path${ground.paths.length > 1 ? 's' : ''}`);
     status.textContent = `${bits.join(' · ')} · ${Math.round(performance.now() - t0)} ms`;
     status.dataset.state = 'ok';
@@ -427,7 +437,8 @@ const start = location.hash.slice(1);
 await show(views[start] ? start : 'homestead');
 loop();
 window.__trees = {
-  forest, outdoors, camera, controls, show, setMode, renderer, scene, grass, ground: () => ground,
+  forest, outdoors, camera, controls, show, setMode, renderer, scene, grass, ground: () => ground, apply,
+  doc: () => views[view].doc,
   /** Stop the clock and render one frame dt seconds later (for frame-by-frame checks). */
   step(dt) { fixed = fixed ?? { t: prev }; fixed.t += dt; tick(fixed.t, dt); },
 };

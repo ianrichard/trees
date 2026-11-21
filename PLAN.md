@@ -76,6 +76,32 @@ in scenes. Authors never see it, so it is not an existential risk. Cheapest firs
 
 Pick the step from a measured frame time (the `timing.js` pattern), not from the device name.
 
+## Progress, 2026-11-21 (late)
+
+Shipped, in the lab as the **Texas** scene:
+
+- **Ground-aware camera.** Orbit never goes under or behind the ground. Tested from 20 buried
+  starts on Ridge: every one ended 2–19 m above grade, with the sight line clear of every hill.
+- **Cover mix.** `"cover": "scrub"` or `{ "grass": 0.5, "dirt": 0.45, "gravel": 0.05 }`. Patches
+  come from quantile-calibrated noise, so shares are honest. The dry palette gives straw
+  bunchgrass with caliche soil between tufts and tan gravel. Patches continue past the extent.
+- **Texas as data.**
+  - `liveoak` and `juniper` are table entries on the existing growth models.
+  - `lib/plants.js` adds two forms: pads (prickly pear) and rosettes (yucca, agave, sotol).
+  - The `plant` and `scrub` uses scatter them. All plants merge into one draw.
+  - The scene is 25 lines.
+- **Cliffs.** Steep ground now shades as bedded limestone (wavy beds, weathered seams, joints,
+  stains, frequency-clamped) instead of dirt, and an outcrop forms the overhanging caprock.
+
+Still open on these:
+
+- **Cliff relief.** The face is a smooth height field; real bluffs step in and out bed by bed.
+  Next: ledge rows that follow the rim, or displaced cliff strips.
+- **Photo textures (S1)** are blocked here: the CC0 hosts aren't on this environment's network.
+  Cover and stone shading are built so S1's maps drop into the same slots.
+- **Plants are static.** Yucca and sotol leaves could take the grass sway cheaply.
+- **Dry grass clumps** read a little boxy up close; Texas wants finer, taller bunchgrass cards.
+
 ## What is left to prove
 
 The bet is that new kinds of place are data, not code. In order:

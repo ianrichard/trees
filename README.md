@@ -12,7 +12,7 @@ That gives you a 9 m oak. Its shape comes from where it is planted.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `kind` | `"oak"` | `oak`, `maple`, `birch`, `pine`, `shrub` |
+| `kind` | `"oak"` | `oak`, `maple`, `birch`, `pine`, `shrub`, `liveoak`, `juniper` |
 | `height` | kind default ±10% (seeded) | Meters. The tree scales uniformly. |
 | `width` | proportional to height | Crown diameter in meters. Scales x/z only. |
 | `at` | `[0, 0]` | Planted position `[x, z]`. This is also the seed. |
@@ -82,6 +82,7 @@ Every module takes `THREE` as an argument, as `packages/3d/src/shape/lighting.js
 | --- | --- | --- | --- | --- | --- |
 | Homestead | 141 | 13 | 3 | 1 | 1 |
 | Ridge | 255 | 53 | 9 | 3 | 1 (a walkout on a slope) |
+| Texas | live oak mottes, cedar brake | limestone bluff and talus | 4 | 2 (caliche road, dry creek) | 1 |
 
 Children of the ground (`lib/scene.js`):
 
@@ -94,6 +95,35 @@ Children of the ground (`lib/scene.js`):
 | `house` | `at` | `size`, `storeys`, `turn`, `reveal`, `grade` (lab stand-in for Alian rooms) |
 | `woods` | `at` | `size`, `kind` (one or a list), `density`, `turn`: a seeded stand |
 | `rocks` | `at` | `size`, `count`, `stone`, `scale`: a seeded rock field |
+| `plant` | `at` | `params.kind` (`pricklypear`, `yucca`, `agave`, `sotol`), `params.h` |
+| `scrub` | `at` | `size`, `kind` (one or a list), `density`, `turn`: a seeded scatter of low plants in clumps |
+
+### Cover
+
+`ground.cover` says what grows on the top face. It is a preset name or a mix of shares:
+
+```json
+"cover": "scrub"
+"cover": { "use": "scrub", "grass": 0.5, "dirt": 0.45, "gravel": 0.05 }
+```
+
+| Preset | Grass | Dirt | Gravel | Palette |
+| --- | --- | --- | --- | --- |
+| `grass` (default) | 1 | 0 | 0 | green lawn |
+| `meadow` | 0.9 | 0.1 | 0 | green |
+| `scrub` | 0.5 | 0.46 | 0.04 | dry: straw bunchgrass with soil between tufts, caliche soil, tan gravel |
+| `dirt` | 0.1 | 0.85 | 0.05 | dry |
+
+Shares become patches. Ragged noise at 4–12 m is thresholded at its own measured quantiles, so a share of 0.3 really covers about 30% of the ground. Grass clumps thin out over each patch edge instead of stopping at a line. Past the authored extent, the patches continue from the same kind of noise, so a dry place doesn't turn into lawn at the horizon.
+
+### Plants
+
+Two growth forms, and every species is a table entry in `lib/plants.js`:
+
+- **Pads:** jointed flat pads, each sprouting more from its rim, with fruit on some tips (prickly pear).
+- **Rosettes:** leaves radiating from one point, upright at the centre and splaying outward, with V-section leaves. Some have a shaggy trunk and a flower stalk (yucca, agave, sotol).
+
+Plants don't sway, so a scene's plants merge into one static mesh: one draw call. Tree kinds `liveoak` and `juniper` are data only (`lib/species.js`), using the same growth models.
 
 Groups expand to ordinary children and are seeded by their position. Woods stay off paths, house footprints, rock bases, steep slopes and ponds.
 
@@ -113,7 +143,7 @@ Groups expand to ordinary children and are seeded by their position. Woods stay 
 
 ### Cameras
 
-- **Orbit** is the hand-driven camera.
+- **Orbit** is the hand-driven camera. It never goes under or behind the ground: the target stays on the grade, the eye stays clear of the ground near it, and the eye rises until its sight line clears every hill in between.
 - **Tour** is a drone loop around the scene that clears the tallest tree under it.
 - **Walk the path** is a first-person view at eye height along the first path. It eases in and out, holds at the end, turns and walks back.
 
