@@ -145,6 +145,12 @@ function apply(doc, { write = true } = {}) {
     for (const H of ground.houses) features.add(buildHouse(THREE, H, ground.heightAt));
     grass.setGround(ground);
     buildGround(resolved.scene, forest.occluders());
+    // Compile every shader variant now (far-detail trees included), so the first tree to change
+    // detail mid-walk doesn't stall a frame compiling its program.
+    const hidden = [];
+    forest.group.traverse((o) => { if (o.isMesh && !o.visible) { o.visible = true; hidden.push(o); } });
+    renderer.compile(scene, camera);
+    for (const o of hidden) o.visible = false;
     views[view].doc = doc;
     if (write) editor.value = format(doc);
     const bits = [`${trees.length} trees`];
