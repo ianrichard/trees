@@ -79,7 +79,27 @@ const features = new THREE.Group();
 scene.add(features);
 const plantMat = plantMaterial(THREE);
 const stones = new Map();
-const stoneFor = (kind) => { if (!stones.has(kind)) stones.set(kind, stoneMaterial(THREE, kind)); return stones.get(kind); };
+const stoneFor = (kind) => { if (!stones.has(kind)) stones.set(kind, withDetail(kind, stoneMaterial(THREE, kind))); return stones.get(kind); };
+// Cliffs are closed solids but their caps and overhang undersides wind both ways: draw both sides.
+// Optional photographic detail per stone (see README "Stone detail"): surfaces/<stone>-albedo.webp and
+// surfaces/<stone>-normal.webp. Missing files just leave the procedural finish.
+const stoneDetail = new Map();
+function detailFor(kind) {
+  if (stoneDetail.has(kind)) return stoneDetail.get(kind);
+  const d = { map: null, normalMap: null, listeners: [] };
+  stoneDetail.set(kind, d);
+  const done = () => { for (const m of d.listeners) m.setDetail(d); };
+  for (const [key, suffix, srgb] of [['map', 'albedo', true], ['normalMap', 'normal', false]]) {
+    loader.load(`surfaces/${kind}-${suffix}.webp`, (t) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      d[key] = t; done();
+    }, undefined, () => {});
+  }
+  return d;
+}
+const withDetail = (kind, m) => { const d = detailFor(kind); d.listeners.push(m); if (d.map || d.normalMap) m.setDetail(d); return m; };
+const cliffMats = new Map();
+const cliffFor = (kind) => { if (!cliffMats.has(kind)) { const m = withDetail(kind, stoneMaterial(THREE, kind)); m.side = THREE.DoubleSide; cliffMats.set(kind, m); } return cliffMats.get(kind); };
 
 /* ---------------------------------------------------------------- documents */
 
@@ -170,7 +190,7 @@ function apply(doc, { write = true } = {}) {
       features.add(m);
     }
     for (const { stone, geometry } of buildCliffs(THREE, ground)) {
-      const m = new THREE.Mesh(geometry, stoneFor(stone));
+      const m = new THREE.Mesh(geometry, cliffFor(stone));
       m.castShadow = m.receiveShadow = true; m.name = 'cliff';
       features.add(m);
     }
@@ -304,7 +324,30 @@ const setHaze = () => { outdoors.setHaze(+hazeIn.value); $('haze-out').textConte
 hazeIn.addEventListener('input', setHaze);
 const hourText = (h) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
 let pendingHour = null;
-hourIn.addEventListener('input', () => { pendingHour = +hourIn.value; $('hour-out').textContent = hourText(+hourIn.value); });
+// One hour value, two sliders: the panel lever and the one on the stage.
+const hourStage = $('hour-stage');
+function setHourUI(h, from) {
+  pendingHour = h;
+  if (from !== hourIn) hourIn.value = h;
+  if (from !== hourStage) hourStage.value = h;
+  $('hour-out').textContent = $('hour-stage-out').textContent = hourText(h);
+}
+hourIn.addEventListener('input', () => { stopDay(); setHourUI(+hourIn.value, hourIn); });
+hourStage.addEventListener('input', () => { stopDay(); setHourUI(+hourStage.value, hourStage); });
+function stopDay() { dayPlay = false; playBtn.setAttribute('aria-pressed', 'false'); playBtn.textContent = '▶'; }
+// Play the day: dawn to dusk in 40 s, looping.
+let dayPlay = false, envHour = -1;
+const playBtn = $('day-play');
+playBtn.addEventListener('click', () => { dayPlay = !dayPlay; if (!dayPlay) pendingHour = +hourIn.value; playBtn.setAttribute('aria-pressed', String(dayPlay)); playBtn.textContent = dayPlay ? '❚❚' : '▶'; });
+// Face the sun: stay where you are and turn toward it, pitched a little under it so a low sun sits in
+// the upper part of the frame with the land below it.
+$('face-sun').addEventListener('click', () => {
+  if (mode !== 'orbit') setMode('orbit');
+  const c = camera.position, sd = outdoors.sunDir, d = Math.max(12, c.distanceTo(controls.target));
+  const az = Math.atan2(sd.z, sd.x), elev = Math.asin(sd.y), pitch = Math.max(-0.2, elev - 0.12);
+  controls.target.set(c.x + Math.cos(az) * Math.cos(pitch) * d, c.y + Math.sin(pitch) * d, c.z + Math.sin(az) * Math.cos(pitch) * d);
+  controls.update();
+});
 windIn.addEventListener('input', () => { forest.uniforms.uWind.value = +windIn.value; $('wind-out').textContent = ['Still', 'Breeze', 'Breeze', 'Windy', 'Gusty'][Math.min(4, Math.floor(+windIn.value * 4))]; });
 
 /* ---------------------------------------------------------------- camera modes */
@@ -407,7 +450,18 @@ function tick(t, dt) {
   resize();
   worst = Math.max(worst, t - prev);
   prev = t;
-  if (pendingHour !== null) { outdoors.setHour(pendingHour); pendingHour = null; }
+  if (dayPlay) {
+    let h = +hourIn.value + dt * 14 / 40;
+    if (h > 20) h = 6;
+    setHourUI(h, null);
+  }
+  if (pendingHour !== null) {
+    // While the day plays, the sun moves every frame; the ambient light refreshes every 0.15 h.
+    const full = !dayPlay || Math.abs(pendingHour - envHour) > 0.15;
+    outdoors.setHour(pendingHour, { env: full });
+    if (full) envHour = pendingHour;
+    pendingHour = null;
+  }
   if (driver) lookAt.copy(driver.update(camera, dt));
   else { controls.update(); keepAboveGround(); lookAt.copy(controls.target); }
   camera.updateMatrixWorld();
@@ -436,7 +490,8 @@ function tick(t, dt) {
 }
 
 outdoors.setHour(+hourIn.value);
-$('hour-out').textContent = hourText(+hourIn.value);
+hourStage.value = hourIn.value;
+$('hour-out').textContent = $('hour-stage-out').textContent = hourText(+hourIn.value);
 forest.uniforms.uWind.value = +windIn.value;
 setHaze();
 const start = location.hash.slice(1);

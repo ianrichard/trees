@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Alian Trees</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Procedural, instanced trees for Alian scenes. Author one with { &quot;use&quot;: &quot;tree&quot; }.">
@@ -30,6 +31,13 @@ body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); ove
   font: 12px var(--mono); font-variant-numeric: tabular-nums; }
 #stats span { background: rgba(14, 18, 12, 0.55); color: #eef2e6; padding: 3px 8px; border-radius: 4px; backdrop-filter: blur(6px); }
 #stats b { font-weight: 500; }
+.sunbar { position: absolute; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 8px;
+  background: rgba(14, 18, 12, 0.5); color: #eef2e6; padding: 4px 10px; border-radius: 8px; backdrop-filter: blur(6px); font: 12px var(--mono); }
+.sunbar input { width: min(38vw, 220px); accent-color: #f2c66d; }
+.sunbar output { min-width: 5ch; font-variant-numeric: tabular-nums; }
+.sunbar button { color: #eef2e6; border-color: rgba(238, 242, 230, 0.35); padding: 2px 8px; font: inherit; }
+.sunbar button[aria-pressed="true"] { background: #f2c66d; border-color: #f2c66d; color: #1e241c; }
+@media (max-width: 420px) { .sunbar #face-sun { display: none; } }
 
 .panel { order: 1; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; min-width: 0;
   padding-block: 20px 28px; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: 18px;
@@ -80,6 +88,13 @@ code { font: 12px var(--mono); background: var(--code); padding: 1px 4px; border
   <div class="stage">
     <canvas id="scene" aria-label="3D view of the authored trees"></canvas>
     <div id="stats"></div>
+    <div class="sunbar" role="group" aria-label="Time of day">
+      <button type="button" id="day-play" aria-pressed="false" aria-label="Play the day">▶</button>
+      <span aria-hidden="true">☀</span>
+      <input id="hour-stage" type="range" min="6" max="20" step="0.05" aria-label="Time of day">
+      <output id="hour-stage-out"></output>
+      <button type="button" id="face-sun" aria-label="Turn toward the sun">Face sun</button>
+    </div>
     
   </div>
   <aside class="panel">

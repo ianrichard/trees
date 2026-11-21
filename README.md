@@ -191,8 +191,33 @@ face, but a wall offset per vertex can. Its shape follows how sedimentary bluffs
   its own amount, joints open into V notches, and now and then a block has fallen out.
 - **Caprock:** the top bed is thickest and hardest, so it projects over the rim and rounds back.
 
-The wall's base sinks below grade; a `rocks` group at the foot makes the talus. It is seeded from
+Each face is a closed solid: the front, a lip over the rim, a back skin into the hill and end caps,
+so no view can see behind or through it. Whole sections of face also step back along major joints
+every 8–20 m, so from above the cliff doesn't follow one smooth line. The wall's base sinks below
+grade; a `rocks` group at the foot makes the talus. It is seeded from
 the landform. `params.face: false` turns it off, and `scope.stone.use` picks the stone.
+
+## Stone detail (hybrid colour and texture)
+
+Stone colour, strata, cracks, stains and moss are procedural, so one stone kind can be retinted. A
+photographic or generated detail set adds real grain on top of that without replacing the colour:
+
+- `surfaces/<stone>-albedo.webp`: only its luminance is used, modulating the procedural tone around
+  its own mean. Grey or colour both work; aim for a mean brightness near 35%.
+- `surfaces/<stone>-normal.webp`: an OpenGL-convention tangent-space normal map.
+- Both should be seamless. They are sampled triplanar in world space, so there are no UVs and no
+  seams, and repeat every 1.6 m (`detail.scale`).
+- `<stone>` is `limestone`, `granite`, `sandstone` or `slate`. A missing file leaves the procedural
+  finish, so the lab never breaks.
+- In code: `stoneMaterial(THREE, stone, { map, normalMap, scale, mix })`, or `material.setDetail()`
+  once textures load.
+
+## Time of day
+
+The bar at the top of the view sets the hour (6:00–20:00). ▶ plays dawn to dusk in 40 s, and
+**Face sun** turns the camera toward the sun from where you stand. While the day plays, the sun, its
+light and the sky move every frame, and the ambient light refreshes about every 9 game-minutes. The
+sun disc is drawn about twice its true 0.53° so it reads on a phone.
 
 ## Leaf placement data
 
