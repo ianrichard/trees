@@ -31,7 +31,7 @@ The seed is the position, quantized to centimeters. Moving a tree re-rolls its b
   - Bark is built from parallel-transport tubes. The root flare has buttress lobes.
   - Foliage uses alpha cards with crown-derived normals.
   - Sky occlusion is baked per vertex by marching through the crown's own leaf density (Beer–Lambert). This shades clumps by the clumps above them.
-  - There are two levels of detail. The far level keeps limbs only and 38% of the cards, drawn larger.
+  - There are two levels of detail. The far level keeps limbs only and 45% of the cards at 1.45× size, about the same leaf area. Each kept card is its near twin (same angle, tone and fold), grown about its own centre, so the crossfade doesn't change the crown.
 - **Materials (`lib/materials.js`).** These are stock `MeshStandardMaterial` with small patches:
   - wind (trunk bend, limb sway and leaf flutter, phased by world position, with shadows following)
   - double-sided crown normals

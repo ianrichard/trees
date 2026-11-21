@@ -16,7 +16,7 @@ import { createTemporalAA } from './lib/taa.js';
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
 // Lab A/B levers: the Edges buttons (remembered per browser) or ?aa=taa|msaa&grass=stable|legacy.
-const LAB_DEFAULTS = { aa: 'taa', grass: 'stable' };
+const LAB_DEFAULTS = { aa: 'taa', grass: 'stable', tone: 'neutral' };
 const query = new URLSearchParams(location.search);
 const remembered = (() => { try { return JSON.parse(localStorage.getItem('trees-lab') ?? '{}'); } catch { return {}; } })();
 const lab = { get: (k) => query.get(k) ?? remembered[k] ?? LAB_DEFAULTS[k] };
@@ -32,7 +32,10 @@ const useTAA = lab.get('aa') === 'taa';
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: !useTAA, powerPreference: 'high-performance' });
 // Same cap as Alian's viewer: retina gets real 2× sampling, which steadies thin foliage most.
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// Tone: Khronos PBR Neutral keeps greens and sky truer than ACES (which yellows foliage and bleaches
+// the sky). The Tone lever compares them.
+const TONES = { neutral: THREE.NeutralToneMapping, aces: THREE.ACESFilmicToneMapping, agx: THREE.AgXToneMapping };
+renderer.toneMapping = TONES[lab.get('tone')] ?? THREE.NeutralToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -133,16 +136,18 @@ function format(doc) {
 let groundWorker = null, groundRequest = 0, lastGround = null;
 try {
   groundWorker = new Worker(new URL('./lib/groundWorker.js', import.meta.url), { type: 'module' });
-  groundWorker.onmessage = ({ data }) => { if (data.id === groundRequest) outdoors.setGround(data); };
+  groundWorker.onmessage = ({ data }) => { if (data.id === groundRequest) { outdoors.setGround(data); reveal(); } };
   // If the worker cannot load here, build the newest request on the main thread instead.
-  groundWorker.onerror = () => { groundWorker = null; if (lastGround) outdoors.setGround(buildGroundArrays(lastGround.scene, { occluders: lastGround.occluders })); };
+  groundWorker.onerror = () => { groundWorker = null; if (lastGround) outdoors.setGround(buildGroundArrays(lastGround.scene, { occluders: lastGround.occluders })); reveal(); };
 } catch { groundWorker = null; }
+// Reveal after the ground is in and one frame has drawn it.
+function reveal() { if (canvas.classList.contains('pending')) requestAnimationFrame(() => requestAnimationFrame(() => canvas.classList.remove('pending'))); }
 function buildGround(full, occluders) {
   const id = ++groundRequest;
   const plain = JSON.parse(JSON.stringify(full));
   lastGround = { scene: plain, occluders };
   if (groundWorker) groundWorker.postMessage({ id, scene: plain, occluders });
-  else outdoors.setGround(buildGroundArrays(plain, { occluders }));
+  else { outdoors.setGround(buildGroundArrays(plain, { occluders })); reveal(); }
 }
 
 let ground = null;
@@ -184,6 +189,7 @@ function apply(doc, { write = true } = {}) {
     console.error(err);
     status.textContent = err.message;
     status.dataset.state = 'error';
+    canvas.classList.remove('pending');
   }
 }
 
@@ -329,6 +335,7 @@ async function show(next) {
   view = next;
   for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
   document.body.dataset.view = view;
+  canvas.classList.add('pending');
   if (!views[view].doc) views[view].doc = await fresh[view]();
   if (mode !== 'orbit') { mode = 'orbit'; driver = null; controls.enabled = true; camera.fov = 42; camera.updateProjectionMatrix(); pressModes(); }
   apply(views[view].doc);

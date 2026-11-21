@@ -23,6 +23,9 @@ body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); ove
 .app { display: grid; grid-template-columns: minmax(300px, 360px) 1fr; height: 100%; }
 .stage { position: relative; min-width: 0; order: 2; }
 #scene { display: block; width: 100%; height: 100%; touch-action: none; }
+/* A new scene stays hidden until its ground mesh arrives, then fades in, so hills never pop under trees. */
+#scene { transition: opacity 0.35s ease-out; }
+#scene.pending { opacity: 0; transition: none; }
 #stats { position: absolute; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none;
   font: 12px var(--mono); font-variant-numeric: tabular-nums; }
 #stats span { background: rgba(14, 18, 12, 0.55); color: #eef2e6; padding: 3px 8px; border-radius: 4px; backdrop-filter: blur(6px); }
@@ -136,7 +139,7 @@ code { font: 12px var(--mono); background: var(--code); padding: 1px 4px; border
     </section>
 
     <section>
-      <h2>Edges</h2>
+      <h2>Rendering</h2>
       <div class="seg two" role="group" aria-label="Antialiasing">
         <button type="button" data-lab="aa" data-value="taa">Temporal (TAA)</button>
         <button type="button" data-lab="aa" data-value="msaa">MSAA only</button>
@@ -145,7 +148,12 @@ code { font: 12px var(--mono); background: var(--code); padding: 1px 4px; border
         <button type="button" data-lab="grass" data-value="stable">Steady grass</button>
         <button type="button" data-lab="grass" data-value="legacy">Old grass</button>
       </div>
-      <p class="note">A/B for edge shimmer. Switching reloads the page.</p>
+      <div class="seg" role="group" aria-label="Tone mapping">
+        <button type="button" data-lab="tone" data-value="neutral">Neutral</button>
+        <button type="button" data-lab="tone" data-value="aces">ACES</button>
+        <button type="button" data-lab="tone" data-value="agx">AgX</button>
+      </div>
+      <p class="note">A/B for edge shimmer and tone. Switching reloads the page.</p>
     </section>
   </aside>
 </div>

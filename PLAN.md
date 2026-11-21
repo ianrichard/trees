@@ -42,6 +42,41 @@ colour variation, a distant ring of soft landforms or tree-line silhouettes so t
 straight, and aerial perspective (a physically small, distance-based desaturation, not a fog wall).
 That is POC 4 below.
 
+## Where we are (2026-11-21, evening)
+
+The lab composes a believable place from about 20 lines of JSON, holds steady at the edges, and
+reads as real light. Fixed in this pass, from Ian's review:
+
+- **Rocks showed their insides.** The triangles were wound inside-out, so normals faced in and the
+  front faces were culled. Fixed in `rocks.js`.
+- **Hills popped on load.** Trees and rocks were placed on the real heights before the worker's
+  ground mesh arrived. A new scene now stays hidden until its ground is in, then fades in over
+  0.35 s, with no loading text.
+- **The detail switch looked like different leaves.** It was: the far level's skip test drew from
+  the same random stream as each leaf's angle, tone and fold, so every kept leaf after the first
+  skip came out different. Each leaf now has its own stream, so a far leaf is its near twin. Far
+  cards also grew outward from their stems, which swelled the crown; they now grow about their own
+  centre. The far level keeps 45% of the leaves at 1.45×, about equal leaf area (before: 38% at
+  1.5×, which looked sparse and dark).
+- **Tone mapping is Khronos PBR Neutral** (Rendering → Tone toggles ACES and AgX). ACES yellowed
+  foliage and bleached the sky to white. Neutral gives a blue sky and truer greens at the same
+  exposure. It was the cheapest realism win available: one line.
+
+## Low-effort, high-impact next steps (recommended order)
+
+1. **Phone check (Ian, 2 minutes).** Open the lab on an iPhone and read the fps chip in Homestead,
+   with TAA and then MSAA. That decides whether TAA ships as the default or needs the 0.75
+   render-scale trick first.
+2. **Clear air (an hour).** Real clear-day aerial perspective: a slight blue shift and loss of
+   contrast with distance, about 10% at 1 km. It is not a fog wall, and it separates the tree
+   layers in depth. It goes in as the Haze lever's low end, for Ian to judge against Off.
+3. **Far field (half a day).** See "Haze is off by default" above. It is the one thing that still
+   looks synthetic from the drone view.
+4. **Wind motion vectors (half a day).** Sharper moving leaves under TAA.
+
+Then the Alian move (below). Composition sugar and per-instance ghosting follow it, because they
+depend on Alian's library and navigation.
+
 ## POCs to run next (in order)
 
 1. **Phone budget for TAA.** Run the lab on iPhone at 390 px with `dynamic-hill/timing.js`, TAA
