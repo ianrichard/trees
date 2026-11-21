@@ -49,6 +49,25 @@ The seed is the position, quantized to centimeters. Moving a tree re-rolls its b
 
 Every module takes `THREE` as an argument, as `packages/3d/src/shape/lighting.js` does in Alian.
 
+## Leaf placement data
+
+Each kind carries a measured leaf inclination distribution (`leaf.angle`). Inclination is the leaf surface's angle from horizontal. All kinds share the same placement rules:
+
+- **Inclination** is sampled around the kind's mean. Sun leaves at the crown top stand steeper (`gradient`), and shade leaves lie flatter.
+- **Facing** tilts toward the open side of the crown (`spread` is the azimuth scatter).
+- **Size**: shade leaves are larger (`shadeGrow`) and new growth at shoot tips is smaller (`tipScale`).
+- **Shape**: each spray is cupped along its stem (`fold`), so it keeps area when seen edge-on.
+
+| Kind | Mean ± sd | Basis |
+| --- | --- | --- |
+| maple | 27° ± 17 | *Acer platanoides*, planophile (ICP Forests LAI manual; terrestrial-lidar intercomparison, 26.8°) |
+| oak | 35° ± 19 | *Quercus petraea* ≈ 25°; *Q. robur* is reported steeper by lidar, so the value splits the difference |
+| birch | 49° ± 18 | *Betula pendula*, whole-crown weighted mean (Forests 10:265, 2019) |
+| shrub | 30° ± 20 | Planophile default recommended where no measurement exists (Pisek et al. 2013) |
+| pine | 12° ± 9 | Flat conifer spray tiers (structural; no leaf angle dataset) |
+
+The full per-species dataset (138 species) is Chianucci et al. 2018, *Annals of Forest Science*, Mendeley Data DOI 10.17632/4rmc7r8zvy.2.
+
 ## Run
 
 ```sh

@@ -9,7 +9,8 @@ import { rng } from './lib/grow.js';
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+// Same cap as Alian's viewer: retina gets real 2× sampling, which steadies thin foliage most.
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
