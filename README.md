@@ -87,7 +87,7 @@ Children of the ground (`lib/scene.js`):
 
 | `use` | Minimum | Options |
 | --- | --- | --- |
-| `tree` | `at` | `kind`, `height`, `width`, `seed`, `lean`, `yaw` |
+| `tree` | `at` | `params.kind`, `params.h`, `params.w` (Alian's form; top-level `kind`, `height`, `width` also work), `seed`, `lean`, `yaw` |
 | `landform` | `at` | `h`, `size`, `soft`, `top`, `vary`, `turn` |
 | `rock`, `outcrop` | `at` | `size`, `h`, `bury`, `strata`, `skirt`, `scope.stone.use` (granite, limestone, sandstone, slate) |
 | `path` | `points` | `width`, `vary`, `surface` (dirt, gravel, pavement, flagstone), `edge` |
@@ -125,6 +125,9 @@ Touching the view hands the camera back to Orbit.
 - Grass fades in by distance.
 - The shadow frustum snaps to its own texels, and its reach changes in steps.
 - Ground and rocks are built once per edit.
+- Temporal antialiasing (`lib/taa.js`, the default) jitters the camera by a sub-pixel offset and blends each frame into a reprojected history, so thin blades and leaf edges stop crawling. The **Edges** control switches to plain MSAA for comparison. Measurements and next steps are in [PLAN.md](PLAN.md).
+- Grass lights both card faces from above, keeps alpha through its mips, calms its sway with distance and melts into the lawn colour before it shrinks.
+- Procedural path and stone detail fades to its mean tone once it is finer than a couple of pixels.
 - `__trees.step(dt)` drives exact frames for frame-by-frame pop checks.
 
 ## Leaf placement data

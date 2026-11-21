@@ -11,16 +11,32 @@ import { buildRocks, stoneMaterial } from './lib/rocks.js';
 import { buildHouse } from './lib/house.js';
 import { createGrass } from './lib/grass.js';
 import { createTour, createWalk } from './lib/explore.js';
+import { createTemporalAA } from './lib/taa.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+// Lab A/B levers: the Edges buttons (remembered per browser) or ?aa=taa|msaa&grass=stable|legacy.
+const LAB_DEFAULTS = { aa: 'taa', grass: 'stable' };
+const query = new URLSearchParams(location.search);
+const remembered = (() => { try { return JSON.parse(localStorage.getItem('trees-lab') ?? '{}'); } catch { return {}; } })();
+const lab = { get: (k) => query.get(k) ?? remembered[k] ?? LAB_DEFAULTS[k] };
+for (const b of document.querySelectorAll('[data-lab]')) {
+  b.setAttribute('aria-pressed', String(lab.get(b.dataset.lab) === b.dataset.value));
+  b.addEventListener('click', () => {
+    try { localStorage.setItem('trees-lab', JSON.stringify({ ...remembered, [b.dataset.lab]: b.dataset.value })); } catch {}
+    if (query.has(b.dataset.lab)) { query.set(b.dataset.lab, b.dataset.value); location.search = query.toString(); } else location.reload();
+  });
+}
+const useTAA = lab.get('aa') === 'taa';
+// With TAA the canvas only receives a full-screen quad, so canvas MSAA would be wasted.
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !useTAA, powerPreference: 'high-performance' });
 // Same cap as Alian's viewer: retina gets real 2× sampling, which steadies thin foliage most.
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.info.autoReset = false; // one frame may be several renders (TAA); stats count them all
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 6000);
@@ -36,7 +52,8 @@ controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 2;
 controls.maxDistance = 260;
 
-const outdoors = createOutdoors(THREE, { renderer, scene, Sky, shadowSize: 2048 });
+const outdoors = createOutdoors(THREE, { renderer, scene, Sky, shadowSize: 2048, offscreen: useTAA });
+const taa = useTAA ? createTemporalAA(THREE, renderer) : null;
 
 /* ---------------------------------------------------------------- bark textures (optional) */
 const loader = new THREE.TextureLoader();
@@ -51,7 +68,7 @@ for (const name of ['oak', 'birch', 'pine']) {
 
 const forest = createForest(THREE, { barkTextures });
 scene.add(forest.group);
-const grass = createGrass(THREE, { uniforms: forest.uniforms });
+const grass = createGrass(THREE, { uniforms: forest.uniforms, stable: lab.get('grass') !== 'legacy' });
 scene.add(grass.mesh);
 const features = new THREE.Group();
 scene.add(features);
@@ -314,6 +331,7 @@ async function show(next) {
   if (mode !== 'orbit') { mode = 'orbit'; driver = null; controls.enabled = true; camera.fov = 42; camera.updateProjectionMatrix(); pressModes(); }
   apply(views[view].doc);
   frame();
+  taa?.reset();
 }
 for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => show(b.dataset.view));
 
@@ -357,7 +375,9 @@ function tick(t, dt) {
   forest.update(camera, t);
   grass.update(camera);
   outdoors.treeLight(forest.uniforms, camera);
-  renderer.render(scene, camera);
+  renderer.info.reset();
+  if (taa) { forest.uniforms.uDitherShift.value = (forest.uniforms.uDitherShift.value + 0.618034) % 1; taa.render(scene, camera); }
+  else renderer.render(scene, camera);
   frames++;
   if (t - fpsT > 0.5) {
     fps = frames / (t - fpsT); frames = 0; fpsT = t;
