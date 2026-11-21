@@ -74,6 +74,59 @@ Every module takes `THREE` as an argument, as `packages/3d/src/shape/lighting.js
 - **Shading:** steep slopes tint toward soil, and tree crowns bake soft occlusion into the grade as their contact shadow.
 - **Shorthand:** an array document is still shorthand for the ground's children, so `[{ "use": "tree" }]` works.
 
+## Scenes
+
+`scenes/homestead.json` is 21 lines and almost all defaults. `scenes/ridge.json` is 44 lines and stress-tests every feature. The resolved scenes are:
+
+| Scene | Trees | Rocks | Landforms | Paths | House |
+| --- | --- | --- | --- | --- | --- |
+| Homestead | 141 | 13 | 3 | 1 | 1 |
+| Ridge | 255 | 53 | 9 | 3 | 1 (a walkout on a slope) |
+
+Children of the ground (`lib/scene.js`):
+
+| `use` | Minimum | Options |
+| --- | --- | --- |
+| `tree` | `at` | `kind`, `height`, `width`, `seed`, `lean`, `yaw` |
+| `landform` | `at` | `h`, `size`, `soft`, `top`, `vary`, `turn` |
+| `rock`, `outcrop` | `at` | `size`, `h`, `bury`, `strata`, `skirt`, `scope.stone.use` (granite, limestone, sandstone, slate) |
+| `path` | `points` | `width`, `vary`, `surface` (dirt, gravel, pavement, flagstone), `edge` |
+| `house` | `at` | `size`, `storeys`, `turn`, `reveal`, `grade` (lab stand-in for Alian rooms) |
+| `woods` | `at` | `size`, `kind` (one or a list), `density`, `turn`: a seeded stand |
+| `rocks` | `at` | `size`, `count`, `stone`, `scale`: a seeded rock field |
+
+Groups expand to ordinary children and are seeded by their position. Woods stay off paths, house footprints, rock bases, steep slopes and ponds.
+
+### Ground and features
+
+- **Rocks** are fractured spheres. Outcrops add strata, with each layer stepped and shifted sideways so ledges overhang.
+- **Stone faces are classified in the shader:**
+  - tops take moss
+  - steep faces show the stone (strata bands, flecks, cracks and bump)
+  - the band at grade blends to soil
+- **Paths** level the ground across their width and are painted per fragment from a surface mask, so they never z-fight.
+- **House pads:**
+  - The floor sits at the highest grade under the footprint, plus a reveal.
+  - The ground is cut around the house, never filled.
+  - The foundation reaches the lowest grade. If more than 1.6 m shows, it becomes a walkout storey with windows, and stairs run from the door down to grade.
+- **Grass** grows in seeded 10 m tiles around the camera. Each clump scales in from zero with distance, and tiles build at most two per frame, out of sight.
+
+### Cameras
+
+- **Orbit** is the hand-driven camera.
+- **Tour** is a drone loop around the scene that clears the tallest tree under it.
+- **Walk the path** is a first-person view at eye height along the first path. It eases in and out, holds at the end, turns and walks back.
+
+Touching the view hands the camera back to Orbit.
+
+### What keeps it from popping
+
+- Trees crossfade between near and far detail over 0.7 s with complementary screen-door dither.
+- Grass fades in by distance.
+- The shadow frustum snaps to its own texels, and its reach changes in steps.
+- Ground and rocks are built once per edit.
+- `__trees.step(dt)` drives exact frames for frame-by-frame pop checks.
+
 ## Leaf placement data
 
 Each kind carries a measured leaf inclination distribution (`leaf.angle`). Inclination is the leaf surface's angle from horizontal. All kinds share the same placement rules:

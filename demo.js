@@ -324,9 +324,15 @@ function resize() {
 const clock = new THREE.Clock();
 let frames = 0, fpsT = 0, fps = 0, prev = 0, worst = 0;
 const statsEl = $('stats'), fwd = new THREE.Vector3(), focus = new THREE.Vector3();
+let fixed = null; // set by __trees.step(): a script drives frames at an exact dt (pop checks)
 function loop() {
+  if (fixed) return;
+  const t = clock.getElapsedTime();
+  tick(t, Math.min(0.05, t - prev));
+  requestAnimationFrame(loop);
+}
+function tick(t, dt) {
   resize();
-  const t = clock.getElapsedTime(), dt = Math.min(0.05, t - prev);
   worst = Math.max(worst, t - prev);
   prev = t;
   if (pendingHour !== null) { outdoors.setHour(pendingHour); pendingHour = null; }
@@ -353,7 +359,6 @@ function loop() {
     statsEl.innerHTML = `<span><b>${s.trees}</b> trees</span><span><b>${(grass.stats() / 1000).toFixed(1)}k</b> grass</span><span><b>${(info.triangles / 1000).toFixed(0)}k</b> tris</span><span><b>${info.calls}</b> calls</span><span><b>${Math.round(fps)}</b> fps · worst ${Math.round(worst * 1000)} ms</span>`;
     worst = 0;
   }
-  requestAnimationFrame(loop);
 }
 
 outdoors.setHour(+hourIn.value);
@@ -362,4 +367,8 @@ forest.uniforms.uWind.value = +windIn.value;
 const start = location.hash.slice(1);
 await show(views[start] ? start : 'homestead');
 loop();
-window.__trees = { forest, outdoors, camera, controls, show, setMode, renderer, scene, grass, ground: () => ground };
+window.__trees = {
+  forest, outdoors, camera, controls, show, setMode, renderer, scene, grass, ground: () => ground,
+  /** Stop the clock and render one frame dt seconds later (for frame-by-frame checks). */
+  step(dt) { fixed = fixed ?? { t: prev }; fixed.t += dt; tick(fixed.t, dt); },
+};
