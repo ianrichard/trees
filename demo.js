@@ -5,7 +5,12 @@ import { createForest, resolveTree } from './lib/forest.js';
 import { createOutdoors } from './lib/outdoors.js';
 import { KINDS, KIND_NAMES } from './lib/species.js';
 import { rng } from './lib/grow.js';
-import { resolveGround, buildGroundArrays } from './lib/ground.js';
+import { buildGroundArrays } from './lib/ground.js';
+import { resolveScene, sceneOf } from './lib/scene.js';
+import { buildRocks, stoneMaterial } from './lib/rocks.js';
+import { buildHouse } from './lib/house.js';
+import { createGrass } from './lib/grass.js';
+import { createTour, createWalk } from './lib/explore.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -29,7 +34,7 @@ controls.zoomToCursor = true;
 controls.screenSpacePanning = true;
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 2;
-controls.maxDistance = 220;
+controls.maxDistance = 260;
 
 const outdoors = createOutdoors(THREE, { renderer, scene, Sky, shadowSize: 2048 });
 
@@ -46,10 +51,14 @@ for (const name of ['oak', 'birch', 'pine']) {
 
 const forest = createForest(THREE, { barkTextures });
 scene.add(forest.group);
+const grass = createGrass(THREE, { uniforms: forest.uniforms });
+scene.add(grass.mesh);
+const features = new THREE.Group();
+scene.add(features);
+const stones = new Map();
+const stoneFor = (kind) => { if (!stones.has(kind)) stones.set(kind, stoneMaterial(THREE, kind)); return stones.get(kind); };
 
 /* ---------------------------------------------------------------- documents */
-
-const SPECIMEN = [{ use: 'tree' }];
 
 function groveDoc() {
   // A meadow: a birch stand, a pine edge behind, oaks and maples in the open, shrubs at the margins.
@@ -67,48 +76,29 @@ function groveDoc() {
   return out;
 }
 
-// Rolling ground: a knoll with an oak, a long ridge of pines, a flat terrace, a hollow.
-function hillsDoc() {
-  const children = {
-    knoll: { use: 'landform', at: [10, -8], params: { h: 3.5, size: 30 } },
-    ridge: { use: 'landform', at: [-22, -34], turn: 25, params: { h: 9, size: [70, 22], soft: [1, 0.55] } },
-    terrace: { use: 'landform', at: [-16, 6], params: { h: 1.6, size: [16, 11], soft: 0.25, top: 'flat' } },
-    hollow: { use: 'landform', at: [8, 12], params: { h: -1.4, size: [12, 8] } },
-    oak: { use: 'tree', at: [10, -8], height: 11 },
-    maple: { use: 'tree', kind: 'maple', at: [-16, 6] },
-  };
-  const r = rng(77);
-  for (let i = 0; i < 46; i++) {
-    const t = r() * 2 - 1, a = 25 * Math.PI / 180, along = t * 34, across = (r() - 0.5) * 16;
-    children[`pine-${i + 1}`] = { use: 'tree', kind: 'pine', at: [Math.round((-22 + along * Math.cos(a) - across * Math.sin(a)) * 10) / 10, Math.round((-34 + along * Math.sin(a) + across * Math.cos(a)) * 10) / 10] };
-  }
-  for (let i = 0; i < 10; i++) children[`birch-${i + 1}`] = { use: 'tree', kind: 'birch', at: [Math.round((20 + r() * 14) * 10) / 10, Math.round((4 + r() * 16) * 10) / 10] };
-  return { ground: { children } };
-}
-
-const views = {
-  specimen: { doc: SPECIMEN, eye: [13, 4.2, 15], target: [0, 4.2, 0], reach: 16 },
-  grove: { doc: groveDoc(), eye: [26, 9, 46], target: [0, 4, -6], reach: 60 },
-  hills: { doc: hillsDoc(), eye: [2, 10, 44], target: [-10, 4, -12], reach: 70 },
+const fresh = {
+  specimen: async () => [{ use: 'tree' }],
+  grove: async () => groveDoc(),
+  homestead: async () => (await fetch('scenes/homestead.json')).json(),
+  ridge: async () => (await fetch('scenes/ridge.json')).json(),
 };
-let view = 'specimen';
+const views = {
+  specimen: { doc: null, eye: [13, 4.2, 15], target: [0, 4.2, 0] },
+  grove: { doc: null, eye: [26, 9, 46], target: [0, 4, -6] },
+  homestead: { doc: null, eye: [24, 8, 30], target: [-2, 2.5, -8] },
+  ridge: { doc: null, eye: [64, 20, 54], target: [4, 5, -14] },
+};
+let view = 'homestead';
 
 /* ---------------------------------------------------------------- editor */
 
 const editor = $('doc');
 const status = $('doc-status');
 
-/** Bare JSON shorthand: an array is the ground's children; a single object is one child. */
-function sceneOf(doc) {
-  if (Array.isArray(doc)) return { ground: { children: Object.fromEntries(doc.map((c, i) => [`${c.use ?? 'item'}-${i + 1}`, c])) } };
-  if (doc && doc.use) return { ground: { children: { [doc.use]: doc } } };
-  return { ground: { children: {}, ...(doc?.ground ?? {}) } };
-}
-
 /** The first child of a kind, as a live reference into the authored doc (for the levers). */
 function firstOf(doc, use) {
   if (Array.isArray(doc)) return doc.find((c) => (c.use ?? 'tree') === use);
-  return Object.values(doc?.ground?.children ?? {}).find((c) => c.use === use);
+  return Object.values(doc?.ground?.children ?? {}).find((c) => (c.use ?? 'tree') === use);
 }
 
 function format(doc) {
@@ -123,39 +113,52 @@ function format(doc) {
 }
 
 // The ground mesh builds in a worker; the newest request wins.
-let groundWorker = null, groundRequest = 0;
+let groundWorker = null, groundRequest = 0, lastGround = null;
 try {
   groundWorker = new Worker(new URL('./lib/groundWorker.js', import.meta.url), { type: 'module' });
   groundWorker.onmessage = ({ data }) => { if (data.id === groundRequest) outdoors.setGround(data); };
   // If the worker cannot load here, build the newest request on the main thread instead.
   groundWorker.onerror = () => { groundWorker = null; if (lastGround) outdoors.setGround(buildGroundArrays(lastGround.scene, { occluders: lastGround.occluders })); };
 } catch { groundWorker = null; }
-let lastGround = null;
-function buildGround(scene, occluders) {
+function buildGround(full, occluders) {
   const id = ++groundRequest;
-  const plain = JSON.parse(JSON.stringify(scene));
+  const plain = JSON.parse(JSON.stringify(full));
   lastGround = { scene: plain, occluders };
   if (groundWorker) groundWorker.postMessage({ id, scene: plain, occluders });
   else outdoors.setGround(buildGroundArrays(plain, { occluders }));
 }
 
-let ground = resolveGround({});
+let ground = null;
 function apply(doc, { write = true } = {}) {
   try {
     const t0 = performance.now();
-    const scene = sceneOf(doc);
-    ground = resolveGround(scene);
-    const kids = Object.values(scene.ground.children ?? {});
-    for (const c of kids) if (c.use && !['tree', 'landform'].includes(c.use)) throw new Error(`Unknown use "${c.use}": try tree or landform`);
-    const trees = forest.set(kids.filter((c) => (c.use ?? 'tree') === 'tree'), { heightAt: ground.heightAt });
-    buildGround(scene, forest.occluders());
+    const resolved = resolveScene(doc);
+    ground = resolved.ground;
+    const trees = forest.set(resolved.trees, { heightAt: ground.heightAt });
+    // Rocks (one merged mesh per stone) and houses.
+    for (const c of [...features.children]) { features.remove(c); c.traverse((o) => o.geometry?.dispose()); }
+    for (const { stone, geometry } of buildRocks(THREE, ground.rocks, ground.heightAt)) {
+      const m = new THREE.Mesh(geometry, stoneFor(stone));
+      m.castShadow = m.receiveShadow = true;
+      features.add(m);
+    }
+    for (const H of ground.houses) features.add(buildHouse(THREE, H, ground.heightAt));
+    grass.setGround(ground);
+    buildGround(resolved.scene, forest.occluders());
     views[view].doc = doc;
     if (write) editor.value = format(doc);
-    const hills = ground.landforms ? ` · ${ground.landforms} landform${ground.landforms === 1 ? '' : 's'}` : '';
-    status.textContent = `${trees.length} ${trees.length === 1 ? 'tree' : 'trees'}${hills} · ${Math.round(performance.now() - t0)} ms`;
+    const bits = [`${trees.length} trees`];
+    if (ground.rocks.length) bits.push(`${ground.rocks.length} rocks`);
+    if (ground.landforms) bits.push(`${ground.landforms} landforms`);
+    if (ground.paths.length) bits.push(`${ground.paths.length} path${ground.paths.length > 1 ? 's' : ''}`);
+    status.textContent = `${bits.join(' · ')} · ${Math.round(performance.now() - t0)} ms`;
     status.dataset.state = 'ok';
+    $('mode-walk').disabled = !ground.paths.length;
+    if (mode === 'walk' && !ground.paths.length) setMode('orbit');
+    else if (mode !== 'orbit') setMode(mode);
     syncLevers();
   } catch (err) {
+    console.error(err);
     status.textContent = err.message;
     status.dataset.state = 'error';
   }
@@ -170,7 +173,7 @@ editor.addEventListener('input', () => {
   }, 350);
 });
 
-/* ---------------------------------------------------------------- levers (edit the first tree) */
+/* ---------------------------------------------------------------- levers */
 
 const kindRow = $('kinds');
 for (const k of KIND_NAMES) {
@@ -200,9 +203,7 @@ $('move').addEventListener('click', () => edit((t) => {
   t.at = [Math.round((x + 3.7) * 10) / 10, z];
   delete t.seed;
 }));
-$('reset').addEventListener('click', () => { apply({ specimen: () => [{ use: 'tree' }], grove: groveDoc, hills: hillsDoc }[view]()); frame(); });
-
-/* ---------------------------------------------------------------- hill levers (edit the first landform) */
+$('reset').addEventListener('click', async () => { apply(await fresh[view]()); frame(); });
 
 const hill = (id, fn) => $(id).addEventListener('input', () => edit((f) => { f.params = f.params ?? {}; fn(f.params, +$(id).value); }, 'landform'));
 hill('hill-h', (p, v) => { p.h = v; });
@@ -212,18 +213,32 @@ hill('hill-kx', (p, v) => { const [, z] = Array.isArray(p.soft) ? p.soft : [p.so
 hill('hill-kz', (p, v) => { const [x] = Array.isArray(p.soft) ? p.soft : [p.soft ?? 1]; p.soft = [x, v]; });
 $('hill-flat').addEventListener('change', () => edit((f) => { f.params = f.params ?? {}; if ($('hill-flat').checked) f.params.top = 'flat'; else delete f.params.top; }, 'landform'));
 $('hill-add').addEventListener('click', () => {
-  const doc = structuredClone(views[view].doc), kids = sceneOf(doc).ground.children;
+  const s = sceneOf(structuredClone(views[view].doc)), kids = s.ground.children;
   const n = Object.keys(kids).filter((k) => k.startsWith('hill')).length + 1;
   const a = n * 2.4, d = 18 + n * 4;
-  const scene = Array.isArray(doc) ? sceneOf(doc) : doc;
   // New hills go first so the levers edit the one just added.
-  scene.ground.children = { [`hill-${n}`]: { use: 'landform', at: [Math.round(Math.cos(a) * d), Math.round(Math.sin(a) * d)], params: { h: 3, size: 20 } }, ...scene.ground.children };
-  apply(scene);
+  s.ground.children = { [`hill-${n}`]: { use: 'landform', at: [Math.round(Math.cos(a) * d), Math.round(Math.sin(a) * d)], params: { h: 3, size: 20 } }, ...kids };
+  apply(s);
 });
 
 function syncLevers() {
-  syncHill();
-  const first = firstOf(views[view].doc, 'tree') ?? { use: 'tree' };
+  const f = firstOf(views[view].doc, 'landform');
+  $('hill-levers').hidden = !f;
+  if (f) {
+    const p = f.params ?? {}, size = Array.isArray(p.size) ? p.size : [p.size ?? 10, p.size ?? 10], soft = Array.isArray(p.soft) ? p.soft : [p.soft ?? 1, p.soft ?? 1];
+    const set = (id, v, text) => { $(id).value = v; $(`${id}-out`).textContent = text; };
+    set('hill-h', p.h ?? 1, `${(p.h ?? 1).toFixed(1)} m`);
+    set('hill-sx', size[0], `${size[0].toFixed(0)} m`);
+    set('hill-sz', size[1], `${size[1].toFixed(0)} m`);
+    set('hill-kx', soft[0], soft[0] < 0.05 ? 'cliff' : soft[0].toFixed(2));
+    set('hill-kz', soft[1], soft[1] < 0.05 ? 'cliff' : soft[1].toFixed(2));
+    $('hill-flat').checked = p.top === 'flat';
+    const key = Object.entries(sceneOf(views[view].doc).ground.children).find(([, c]) => JSON.stringify(c) === JSON.stringify(f))?.[0];
+    $('hill-name').textContent = key ? `"${key}"` : '';
+  }
+  const first = firstOf(views[view].doc, 'tree');
+  $('tree-levers').hidden = !first;
+  if (!first) return;
   const t = resolveTree(first);
   for (const b of kindRow.children) b.setAttribute('aria-pressed', String(b.dataset.kind === t.kind));
   const spec = KINDS[t.kind];
@@ -237,22 +252,6 @@ function syncLevers() {
   $('seed-out').textContent = seedAuto.checked ? `from position (${(first.at ?? [0, 0]).join(', ')})` : `variant ${t.variant}`;
 }
 
-function syncHill() {
-  const f = firstOf(views[view].doc, 'landform');
-  $('hill-levers').hidden = !f;
-  if (!f) return;
-  const p = f.params ?? {}, size = Array.isArray(p.size) ? p.size : [p.size ?? 10, p.size ?? 10], soft = Array.isArray(p.soft) ? p.soft : [p.soft ?? 1, p.soft ?? 1];
-  const set = (id, v, text) => { $(id).value = v; $(`${id}-out`).textContent = text; };
-  set('hill-h', p.h ?? 1, `${(p.h ?? 1).toFixed(1)} m`);
-  set('hill-sx', size[0], `${size[0].toFixed(0)} m`);
-  set('hill-sz', size[1], `${size[1].toFixed(0)} m`);
-  set('hill-kx', soft[0], soft[0] < 0.05 ? 'cliff' : soft[0].toFixed(2));
-  set('hill-kz', soft[1], soft[1] < 0.05 ? 'cliff' : soft[1].toFixed(2));
-  $('hill-flat').checked = p.top === 'flat';
-  const key = Object.entries(sceneOf(views[view].doc).ground.children).find(([, c]) => c === f || JSON.stringify(c) === JSON.stringify(f))?.[0];
-  $('hill-name').textContent = key ? `"${key}"` : 'first landform';
-}
-
 /* ---------------------------------------------------------------- light and wind */
 
 const hourIn = $('hour'), windIn = $('wind');
@@ -261,29 +260,52 @@ let pendingHour = null;
 hourIn.addEventListener('input', () => { pendingHour = +hourIn.value; $('hour-out').textContent = hourText(+hourIn.value); });
 windIn.addEventListener('input', () => { forest.uniforms.uWind.value = +windIn.value; $('wind-out').textContent = ['Still', 'Breeze', 'Breeze', 'Windy', 'Gusty'][Math.min(4, Math.floor(+windIn.value * 4))]; });
 
+/* ---------------------------------------------------------------- camera modes */
+
+let mode = 'orbit', driver = null;
+const lookAt = new THREE.Vector3();
+function pressModes() { for (const b of document.querySelectorAll('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode)); }
+function setMode(next) {
+  mode = next;
+  pressModes();
+  controls.enabled = mode === 'orbit';
+  camera.fov = mode === 'walk' ? 58 : 42; camera.updateProjectionMatrix();
+  if (mode === 'tour') { driver = createTour(THREE, { ground, trees: forest.trees() }); driver.start(camera, lookAt); }
+  else if (mode === 'walk') { driver = createWalk(THREE, { path: ground.paths[0], ground }); driver.start(camera); }
+  else driver = null;
+}
+for (const b of document.querySelectorAll('[data-mode]')) b.addEventListener('click', () => setMode(b.dataset.mode));
+// Touching the scene during a tour or walk hands the camera back, looking where it was looking.
+canvas.addEventListener('pointerdown', () => {
+  if (mode === 'orbit') return;
+  controls.target.copy(lookAt);
+  setMode('orbit');
+});
+
 /* ---------------------------------------------------------------- views */
 
 function frame() {
   const v = views[view];
   if (view === 'specimen') {
-    const t = resolveTree(v.doc[0] ?? {});
+    const t = resolveTree(firstOf(v.doc, 'tree') ?? {});
     const h = t.height, d = Math.max(h, t.width) * 1.85 + 2;
     const gy = ground.heightAt(t.x, t.z);
     camera.position.set(t.x + d * 0.62, gy + Math.max(1.4, h * 0.42), t.z + d * 0.78);
     controls.target.set(t.x, gy + h * 0.47, t.z);
-    outdoors.place(new THREE.Vector3(t.x, gy, t.z), Math.max(h, t.width) * 1.2 + 2);
   } else {
     camera.position.set(...v.eye);
     controls.target.set(...v.target);
-    outdoors.place(new THREE.Vector3(v.target[0], 0, v.target[2] - 4), v.reach);
   }
   controls.update();
+  lookAt.copy(controls.target);
 }
 
-function show(next) {
+async function show(next) {
   view = next;
   for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
   document.body.dataset.view = view;
+  if (!views[view].doc) views[view].doc = await fresh[view]();
+  if (mode !== 'orbit') { mode = 'orbit'; driver = null; controls.enabled = true; camera.fov = 42; camera.updateProjectionMatrix(); pressModes(); }
   apply(views[view].doc);
   frame();
 }
@@ -300,22 +322,36 @@ function resize() {
 }
 
 const clock = new THREE.Clock();
-let frames = 0, fpsT = 0, fps = 0;
-const statsEl = $('stats');
+let frames = 0, fpsT = 0, fps = 0, prev = 0, worst = 0;
+const statsEl = $('stats'), fwd = new THREE.Vector3(), focus = new THREE.Vector3();
 function loop() {
   resize();
+  const t = clock.getElapsedTime(), dt = Math.min(0.05, t - prev);
+  worst = Math.max(worst, t - prev);
+  prev = t;
   if (pendingHour !== null) { outdoors.setHour(pendingHour); pendingHour = null; }
-  controls.update();
+  if (driver) lookAt.copy(driver.update(camera, dt));
+  else { controls.update(); lookAt.copy(controls.target); }
   camera.updateMatrixWorld();
-  const t = clock.getElapsedTime();
+  // Shadows cover what is in front of the camera. The reach moves in steps and the centre snaps to
+  // shadow texels, so shadows never breathe or crawl while the camera moves.
+  camera.getWorldDirection(fwd);
+  const dist = mode === 'walk' ? 18 : camera.position.distanceTo(lookAt);
+  const reach = Math.min(110, Math.max(20, Math.pow(1.4, Math.ceil(Math.log(dist * 0.9 + 10) / Math.log(1.4)))));
+  focus.copy(mode === 'walk' ? camera.position : lookAt);
+  if (mode === 'walk') focus.addScaledVector(fwd.setY(0).normalize(), reach * 0.55);
+  if (ground) focus.y = ground.heightAt(focus.x, focus.z);
+  outdoors.place(focus, reach);
   forest.update(camera, t);
+  grass.update(camera);
   outdoors.treeLight(forest.uniforms, camera);
   renderer.render(scene, camera);
   frames++;
   if (t - fpsT > 0.5) {
     fps = frames / (t - fpsT); frames = 0; fpsT = t;
     const s = forest.stats(), info = renderer.info.render;
-    statsEl.innerHTML = `<span><b>${s.trees}</b> trees</span><span><b>${(info.triangles / 1000).toFixed(0)}k</b> triangles</span><span><b>${info.calls}</b> draw calls</span><span><b>${Math.round(fps)}</b> fps</span>`;
+    statsEl.innerHTML = `<span><b>${s.trees}</b> trees</span><span><b>${(grass.stats() / 1000).toFixed(1)}k</b> grass</span><span><b>${(info.triangles / 1000).toFixed(0)}k</b> tris</span><span><b>${info.calls}</b> calls</span><span><b>${Math.round(fps)}</b> fps · worst ${Math.round(worst * 1000)} ms</span>`;
+    worst = 0;
   }
   requestAnimationFrame(loop);
 }
@@ -323,6 +359,7 @@ function loop() {
 outdoors.setHour(+hourIn.value);
 $('hour-out').textContent = hourText(+hourIn.value);
 forest.uniforms.uWind.value = +windIn.value;
-show(views[location.hash.slice(1)] ? location.hash.slice(1) : 'specimen');
+const start = location.hash.slice(1);
+await show(views[start] ? start : 'homestead');
 loop();
-window.__trees = { forest, outdoors, camera, controls, show, renderer, scene, ground: () => ground };
+window.__trees = { forest, outdoors, camera, controls, show, setMode, renderer, scene, grass, ground: () => ground };

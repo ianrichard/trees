@@ -1,0 +1,44 @@
+{
+  "ground": {
+    "children": {
+      "trail": { "use": "path", "params": { "surface": "gravel", "width": 1.1, "vary": 0.25 },
+        "points": [[34, 40], [22, 30], [8, 24], [-8, 18], [-20, 8], [-14, -2], [2, -6], [14, -12], [6, -20], [-10, -24], [-24, -30], [-34, -38]] },
+      "drive": { "use": "path", "params": { "surface": "pavement", "width": 3.2, "vary": 0, "edge": 0.08 },
+        "points": [[60, 30], [46, 20], [40, 6], [41, -6]] },
+      "terrace-walk": { "use": "path", "params": { "surface": "flagstone", "width": 1.4, "vary": 0, "edge": 0.06 },
+        "points": [[41, -6], [33, -5.5], [26, -7.4]] },
+
+      "ridge": { "use": "landform", "at": [-30, -46], "turn": 18, "params": { "h": 16, "size": [120, 40], "soft": [1, 0.6] } },
+      "scarp": { "use": "landform", "at": [-58, -18], "turn": 70, "params": { "h": 9, "size": [44, 22], "soft": [0.7, 0.05] } },
+      "shoulder": { "use": "landform", "at": [8, -18], "params": { "h": 5, "size": [44, 30], "soft": 0.8 } },
+      "bench-1": { "use": "landform", "at": [-6, -34], "params": { "h": 7.5, "size": [18, 10], "soft": 0.3, "top": "flat" } },
+      "bench-2": { "use": "landform", "at": [-24, -40], "params": { "h": 10.5, "size": [16, 9], "soft": 0.3, "top": "flat" } },
+      "hillside": { "use": "landform", "at": [30, -22], "params": { "h": 6, "size": [40, 34] } },
+      "mound": { "use": "landform", "at": [52, 44], "params": { "h": 2, "size": 18, "vary": 0.4 } },
+      "pond": { "use": "landform", "at": [8, 34], "params": { "h": -1.6, "size": [22, 13], "vary": 0.3 } },
+      "gully": { "use": "landform", "at": [-34, 12], "turn": -30, "params": { "h": -2.2, "size": [40, 6], "soft": [1, 0.8] } },
+
+      "house": { "use": "house", "at": [30, -18], "turn": 10, "params": { "size": [12, 8], "storeys": 2 } },
+
+      "limestone-ledge": { "use": "outcrop", "at": [-8, -40], "params": { "h": 2.6, "size": [10, 3] } },
+      "granite-tor": { "use": "outcrop", "at": [-40, -36], "params": { "h": 4.5, "size": [7, 6], "strata": 0.2 }, "scope": { "stone": { "use": "granite" } } },
+      "sandstone-band": { "use": "outcrop", "at": [-58, -14], "turn": 70, "params": { "h": 3.2, "size": [14, 3.5], "strata": 0.9 }, "scope": { "stone": { "use": "sandstone" } } },
+      "slate-step": { "use": "outcrop", "at": [16, -4], "params": { "h": 1.2, "size": [4, 2.4] }, "scope": { "stone": { "use": "slate" } } },
+      "pond-stones": { "use": "rocks", "at": [8, 26], "params": { "size": [18, 5], "count": 10, "stone": "slate", "scale": 0.7 } },
+      "scree": { "use": "rocks", "at": [-50, -26], "params": { "size": [16, 18], "count": 26, "stone": "sandstone", "scale": 0.8 } },
+      "boulder-field": { "use": "rocks", "at": [-22, -12], "params": { "size": 16, "count": 12 } },
+      "erratic": { "use": "rock", "at": [22, 18], "params": { "size": 3.4, "h": 2.2 } },
+
+      "ridge-pines": { "use": "woods", "at": [-30, -52], "turn": 18, "params": { "size": [120, 26], "kind": "pine", "density": 1.2 } },
+      "slope-mix": { "use": "woods", "at": [-36, -6], "params": { "size": [30, 22], "kind": ["oak", "maple"] } },
+      "pond-birches": { "use": "woods", "at": [-8, 38], "params": { "size": [22, 14], "kind": "birch", "density": 1.4 } },
+      "east-maples": { "use": "woods", "at": [56, 4], "params": { "size": [20, 40], "kind": "maple" } },
+      "shrubs": { "use": "woods", "at": [12, 6], "params": { "size": [30, 16], "kind": "shrub", "density": 0.6 } },
+      "garden-shrubs": { "use": "woods", "at": [36, -6], "params": { "size": [12, 5], "kind": "shrub", "density": 1.5 } },
+      "trailhead-oak": { "use": "tree", "at": [30, 34], "height": 13 },
+      "bench-maple": { "use": "tree", "kind": "maple", "at": [-8, -32] },
+      "yard-oak": { "use": "tree", "at": [46, -24] },
+      "lone-pine": { "use": "tree", "kind": "pine", "at": [-24, -38], "height": 17, "lean": 6 }
+    }
+  }
+}

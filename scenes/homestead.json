@@ -1,0 +1,21 @@
+{
+  "ground": {
+    "children": {
+      "lane": { "use": "path", "points": [[-8, 46], [-12, 26], [-4, 9], [-1.8, -5.5]] },
+      "house": { "use": "house", "at": [0, -10] },
+      "rise": { "use": "landform", "at": [0, -42], "params": { "h": 7, "size": [130, 52] } },
+      "knoll": { "use": "landform", "at": [34, 12], "params": { "h": 3, "size": 30 } },
+      "pond": { "use": "landform", "at": [-28, 18], "params": { "h": -1.2, "size": [16, 10] } },
+      "woods": { "use": "woods", "at": [0, -52], "params": { "size": [120, 34] } },
+      "pines": { "use": "woods", "at": [-56, -10], "params": { "size": [30, 50], "kind": "pine" } },
+      "oak": { "use": "tree", "at": [13, 3] },
+      "maple": { "use": "tree", "kind": "maple", "at": [-14, -4] },
+      "birch-1": { "use": "tree", "kind": "birch", "at": [-21, 12] },
+      "birch-2": { "use": "tree", "kind": "birch", "at": [-33, 25] },
+      "knoll-oak": { "use": "tree", "at": [34, 12] },
+      "hedge": { "use": "woods", "at": [10, -3], "params": { "size": [14, 4], "kind": "shrub" } },
+      "boulders": { "use": "rocks", "at": [28, 4], "params": { "size": 12 } },
+      "ledge": { "use": "outcrop", "at": [-24, -30] }
+    }
+  }
+}
