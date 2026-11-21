@@ -4,7 +4,7 @@ Status, 2026-11-21. The goal is simple SDUI scene composition (a short JSON list
 outdoor place) that looks great and runs well on phones. The lab is close. This file lists what is
 left, the POCs still worth running, and what makes the move into Alian a copy-paste job.
 
-## Edge shimmer (done as POCs; needs a phone check)
+## Edge shimmer (done)
 
 The grass and every thin edge vibrated because of sub-pixel detail. MSAA only antialiases one frame,
 so anything thinner than a pixel still flickers from frame to frame as the view moves. The lab never
@@ -18,11 +18,11 @@ luminance. "Hot" means the pixels that flicker visibly.
 | Eye level in grass, lower half of the screen | 29.9% hot | 27.4% | **1.0%** |
 | One tree | 5.3% hot | 4.5% | **0.04%** |
 
-- **TAA (`lib/taa.js`) is the fix.** The camera jitters by a sub-pixel Halton offset each frame.
+- **TAA (`lib/taa.js`) is the fix.** Smooth on the latest iPhone Pro (Ian). The camera jitters by a sub-pixel Halton offset each frame.
   History is reprojected from depth, Catmull-Rom filtered, and variance-clipped in YCoCg. It is now
   the lab default; the Edges control switches back to MSAA.
   - Cost: the scene draws once into a half-float target with no MSAA, then two full-screen passes.
-    In software GL it was cheaper than MSAA. **Real-phone cost is not measured yet.**
+    In software GL it was cheaper than MSAA. Older-iPad cost is not checked yet.
 - **Cheap fixes** (kept, since they help under either mode):
   - Grass back faces light like the front. They were lit from below, which made dark speckle.
   - Mip-aware alpha on grass.
@@ -40,7 +40,7 @@ uniform green that meets the sky in a ruler-straight line. Homestead holds up be
 trees and rise fill the horizon. The fix belongs in the far field itself: low-frequency tone and
 colour variation, a distant ring of soft landforms or tree-line silhouettes so the horizon isn't
 straight, and aerial perspective (a physically small, distance-based desaturation, not a fog wall).
-That is POC 4 below.
+That is item 5 under "What is left to prove".
 
 ## Where we are (2026-11-21, evening)
 
@@ -62,38 +62,57 @@ reads as real light. Fixed in this pass, from Ian's review:
   foliage and bleached the sky to white. Neutral gives a blue sky and truer greens at the same
   exposure. It was the cheapest realism win available: one line.
 
-## Low-effort, high-impact next steps (recommended order)
+## Performance
 
-1. **Phone check (Ian, 2 minutes).** Open the lab on an iPhone and read the fps chip in Homestead,
-   with TAA and then MSAA. That decides whether TAA ships as the default or needs the 0.75
-   render-scale trick first.
-2. **Clear air (an hour).** Real clear-day aerial perspective: a slight blue shift and loss of
-   contrast with distance, about 10% at 1 km. It is not a fog wall, and it separates the tree
-   layers in depth. It goes in as the Haze lever's low end, for Ian to judge against Off.
-3. **Far field (half a day).** See "Haze is off by default" above. It is the one thing that still
-   looks synthetic from the drone view.
-4. **Wind motion vectors (half a day).** Sharper moving leaves under TAA.
+Ian, 2026-11-21: great on the latest iPhone Pro. Still to check: an older iPad, which has a bigger
+screen and less GPU. If it chokes, the cuts live in the runtime as one generic quality ladder, not
+in scenes. Authors never see it, so it is not an existential risk. Cheapest first:
 
-Then the Alian move (below). Composition sugar and per-instance ghosting follow it, because they
-depend on Alian's library and navigation.
+1. TAA at 0.75 render scale, upsampled in the resolve.
+2. Shadow map 2048 → 1024, and a shorter shadow reach.
+3. Grass radius and density.
+4. Tree near-detail distance, so more trees draw at far detail.
+5. Fewer far-detail leaf cards.
 
-## POCs to run next (in order)
+Pick the step from a measured frame time (the `timing.js` pattern), not from the device name.
 
-1. **Phone budget for TAA.** Run the lab on iPhone at 390 px with `dynamic-hill/timing.js`, TAA
-   versus MSAA. Then try TAA at 0.75 render scale with the upsample in the resolve. TAA usually
-   makes a lower resolution look better than full-resolution MSAA, which is the perf headroom.
-2. **Wind motion vectors.** Wind is a pure function of time, so the vertex shader can compute last
-   frame's position (`uTime - dt`) and write true velocity. That removes the remaining softness on
-   moving leaves without per-object history buffers.
-3. **Composer pass shape.** Wrap `TemporalResolveShader` as an `EffectComposer` pass that reads
+## What is left to prove
+
+The bet is that new kinds of place are data, not code. In order:
+
+1. **Ground-aware camera (about an hour).** The eye stays a minimum height above the ground under
+   it and just ahead of it, and the orbit target lifts if the eye would end up inside a slope, so
+   orbiting a hill never goes under or behind the scene. Alian's navigation needs the same rule
+   (focus a tree, then step Up to the ground).
+2. **Imperfect ground: photo textures plus a cover mix.**
+   - Real CC0 dirt, gravel and rock textures replace the canvas-drawn ones (brief S1 in Alian's
+     `3d-outdoors.md`).
+   - `cover` becomes a mix with patchy noise, for example `{ "dirt": 0.6, "grass": 0.3,
+     "gravel": 0.1 }`. Grass scatters only where grass cover wins.
+   - Texture versus 3D: anything that breaks the silhouette or casts a visible shadow at viewing
+     distance is 3D (cactus, boulders, near grass clumps). Anything flatter than about 5 cm, or
+     smaller than a pixel, is texture (gravel, pebbles, cracked caliche, litter, far grass).
+     3D fades into texture with distance, as grass already does.
+3. **Texas: a new landscape as data.** Two new plant shapes:
+   - ribbed, jointed solids for cactus
+   - rosettes for yucca, agave and grass tufts
+
+   After those, a species is a table entry. Done when a Hill Country scene is about 40 lines of
+   species and cover definitions plus a 20-line scene, with no other engine change.
+4. **Limestone cliffs.** Ground is a height map and can't overhang, so bluffs are outcrops at
+   landscape scale: stepped ledges, an undercut base, and a talus apron blending into the grade.
+   This tests rock texture density at 30 m, rock detail levels, and the strata shader at that size.
+5. **Far field without haze**, and **clear air** as the Haze lever's low end (see above).
+6. **Wind motion vectors**, for sharper moving leaves under TAA.
+
+## Port work (with the Alian move)
+
+1. **Composer pass shape.** Wrap `TemporalResolveShader` as an `EffectComposer` pass that reads
    N8AO's beauty depth. It replaces FXAA, and the beauty target can drop its MSAA samples. TAA also
    denoises AO.
-4. **Far field without haze.** Past the authored extent: tone variation, a non-straight horizon
-   (distant soft landforms or tree lines), and a grass-like response past the grass radius so its
-   edge never reads as a ring from the drone view.
-5. **Per-instance ghosting and selection** for instanced trees. Alian's `visibility.js` fades
+2. **Per-instance ghosting and selection** for instanced trees. Alian's `visibility.js` fades
    meshes, but trees are one draw per kind and variant, so this needs an instance attribute.
-6. **Composition sugar.** Covers and presets (`"cover": "meadow"`, a `woods` mix per region) so a
+3. **Composition sugar.** Covers and presets (`"cover": "meadow"`, a `woods` mix per region) so a
    good-looking place stays under 20 lines. `homestead.json` is the bar: 21 lines.
 
 ## Copy-paste readiness for the Alian move
