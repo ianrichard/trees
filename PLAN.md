@@ -127,6 +127,12 @@ Still open on these:
   vegetation (a house today, any Alian object tomorrow) keeps generated trees, plants and rocks off
   its footprint. Verified: zero generated trees within 8 m of a placed house.
 
+- **Stands grow** (`lib/ecology.js`): founders, dispersal kernels per species, clonal spread, light
+  competition, self-thinning, age, and carrying capacity per terrain. The result is clumped and
+  measurably so (Clark–Evans 0.87 trees, 0.67 plants), with a natural size spread. 30–70 ms per place.
+- **Plant cost:** a dense Hill Country scrub was 1.6M triangles; it's now 432k (lighter pads and
+  leaves). A far-detail level for plants (a card or a merged low mesh past 40 m) is the next cut.
+
 Next on this line, in order of magic per effort:
 
 1. **Objects connect themselves.** A placed house gets a drive from the nearest path or the area edge

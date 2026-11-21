@@ -28,12 +28,28 @@ groves with open grass between. Every field is optional:
 | `cover` | the terrain's | Overrides the ground cover |
 | `children` | none | Foreground objects. A house, rock or any placed thing keeps its ground clear. Same keys replace generated ones. |
 
-Trees grow where the finished terrain suits each species. Each species has a preferred slope, a band
-of height within this landscape (low ground to uplands), and a liking or dislike for wet ground
-(hollows and creeks). Grove patches decide where land is wooded and where it's open, and shrubs keep
-to the grove edges. A species is picked in proportion to how well the site suits it, so stands mix
-where several species fit and stay pure where only one does. Highlands have a treeline. Nothing is
-random at view time: it's all seeded.
+Stands are grown, not scattered (`lib/ecology.js`). It's a small simulation of about 14 generations,
+run once per place:
+
+- **Founders** settle on well-suited sites, a few of every species.
+- **Seed dispersal:** mature trees drop seeds at their species' distances. The kernel is
+  exponential: most seeds land near the parent and a few travel far. Acorns stay close, maple and
+  birch seed blow far, and juniper seed is bird-carried.
+- **Clonal spread:** live oak root-sprouts into mottes. Prickly pear roots from dropped pads, and
+  agave and yucca ring themselves with offsets.
+- **Establishment:** a seedling takes only if the site suits its species and there's light. Under a
+  bigger crown only shade-tolerant species start: maple yes, birch no. Shrubs prefer grove edges.
+- **Growth, competition, death:** overtopped trees grow slowly and often die, so crowded stands thin
+  themselves. Growth slows near full size, and old trees die of age.
+- **Carrying capacity:** each terrain holds a different number of established trees. Meadow is
+  parkland and forest is closed canopy.
+
+What emerges is what real stands show: clumped groves with uneven edges, many young trees and few
+old giants, and species sorted by site. Measured with the Clark–Evans index (1 is random, below 1
+is clumped): trees 0.87, low plants 0.67. Each tree's simulated size sets its height. Suitability
+per species is its preferred slope, its band of height within this landscape, and its liking for
+wet ground (hollows and creeks). Highlands have a treeline. Nothing is random at view time: it's
+all seeded.
 
 The terrains:
 
