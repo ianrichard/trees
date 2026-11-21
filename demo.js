@@ -354,6 +354,29 @@ function resize() {
   }
 }
 
+// Orbit never goes under or behind the ground. The target stays on or above the grade, the eye stays
+// a clearance above the highest ground near it, and the line from eye to target clears every hill
+// between them (the eye rises until it does). OrbitControls reads the corrected position on its
+// next update, so a drag simply slides up over the hill instead of fighting the clamp.
+const losP = new THREE.Vector3();
+function keepAboveGround() {
+  if (!ground) return;
+  const t = controls.target, c = camera.position, h = ground.heightAt;
+  t.y = Math.max(t.y, h(t.x, t.z) + 0.3);
+  const dist = c.distanceTo(t), clear = Math.max(1.2, dist * 0.03);
+  let need = -Infinity;
+  for (const [dx, dz] of [[0, 0], [1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]]) need = Math.max(need, h(c.x + dx, c.z + dz) + clear);
+  // Sight line: at fraction f from target to eye, its height is t.y + f·(eye.y − t.y), which must
+  // clear the ground there by a margin. Solve each sample for the eye height it requires.
+  for (let i = 1; i < 24; i++) {
+    const f = i / 24;
+    losP.lerpVectors(t, c, f);
+    const g = h(losP.x, losP.z) + 0.6 + clear * f * 0.5;
+    if (g > t.y) need = Math.max(need, t.y + (g - t.y) / f);
+  }
+  if (c.y < need) c.y = need;
+}
+
 const clock = new THREE.Clock();
 let frames = 0, fpsT = 0, fps = 0, prev = 0, worst = 0;
 const statsEl = $('stats'), fwd = new THREE.Vector3(), focus = new THREE.Vector3();
@@ -370,7 +393,7 @@ function tick(t, dt) {
   prev = t;
   if (pendingHour !== null) { outdoors.setHour(pendingHour); pendingHour = null; }
   if (driver) lookAt.copy(driver.update(camera, dt));
-  else { controls.update(); lookAt.copy(controls.target); }
+  else { controls.update(); keepAboveGround(); lookAt.copy(controls.target); }
   camera.updateMatrixWorld();
   // Shadows cover what is in front of the camera. The reach moves in steps and the centre snaps to
   // shadow texels, so shadows never breathe or crawl while the camera moves.
