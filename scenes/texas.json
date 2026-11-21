@@ -2,8 +2,7 @@
   "ground": {
     "cover": "scrub",
     "children": {
-      "mesa": { "use": "landform", "at": [-18, -44], "turn": 8, "params": { "h": 11, "size": [130, 42], "soft": [1, 0.1], "top": "flat" } },
-      "caprock": { "use": "outcrop", "at": [-18, -25.5], "turn": 8, "params": { "h": 2.4, "size": [70, 4], "bury": 0.35, "strata": 0.9 } },
+      "mesa": { "use": "landform", "at": [-18, -44], "turn": 8, "params": { "h": 11, "size": [130, 42], "soft": [0.3, 0.06], "top": "flat" } },
       "talus": { "use": "rocks", "at": [-18, -18], "turn": 8, "params": { "size": [62, 6], "count": 34, "stone": "limestone", "scale": 0.9 } },
       "creek": { "use": "landform", "at": [-8, -6], "turn": 8, "params": { "h": -1.4, "size": [110, 7], "soft": [1, 0.7] } },
       "creek-bed": { "use": "path", "params": { "surface": "gravel", "width": 3, "vary": 0.4, "edge": 0.8 },

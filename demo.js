@@ -13,6 +13,7 @@ import { createGrass } from './lib/grass.js';
 import { createTour, createWalk } from './lib/explore.js';
 import { createTemporalAA } from './lib/taa.js';
 import { buildPlants, plantMaterial } from './lib/plants.js';
+import { buildCliffs } from './lib/cliffs.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -166,6 +167,11 @@ function apply(doc, { write = true } = {}) {
     for (const { stone, geometry } of buildRocks(THREE, ground.rocks, ground.heightAt)) {
       const m = new THREE.Mesh(geometry, stoneFor(stone));
       m.castShadow = m.receiveShadow = true;
+      features.add(m);
+    }
+    for (const { stone, geometry } of buildCliffs(THREE, ground)) {
+      const m = new THREE.Mesh(geometry, stoneFor(stone));
+      m.castShadow = m.receiveShadow = true; m.name = 'cliff';
       features.add(m);
     }
     for (const H of ground.houses) features.add(buildHouse(THREE, H, ground.heightAt));
