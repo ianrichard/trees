@@ -110,6 +110,33 @@ Still open on these:
 - **Plants are static.** Yucca and sotol leaves could take the grass sway cheaply.
 - **Dry grass clumps** read a little boxy up close; Texas wants finer, taller bunchgrass cards.
 
+## One line, a whole place (2026-11-21, night)
+
+`{ "use": "outdoors" }` is now a complete landscape with defaults (`lib/landscape.js`). Shipped:
+
+- **Terrain aliases:** `meadow` (default), `hill-country`, `forest`, `highlands`. Each is a whole
+  landscape (landforms, cover, ecology) that expands to ordinary children, the same as `woods` and
+  `rocks` do.
+- **Ecology:** trees grow where the finished terrain suits each species: slope, height within this
+  landscape, wetness (hollows and creeks), and grove patches. Species are picked in proportion to
+  fit, so stands mix naturally. Highlands have a treeline, and shrubs keep to grove edges. Each
+  terrain resolves in 12–50 ms.
+- **On-demand, not random:** `seed` picks the place. The same seed always gives the same place, and
+  the lab's New seed button bumps it.
+- **Foreground objects claim ground:** any child with a position that isn't ground shape or
+  vegetation (a house today, any Alian object tomorrow) keeps generated trees, plants and rocks off
+  its footprint. Verified: zero generated trees within 8 m of a placed house.
+
+Next on this line, in order of magic per effort:
+
+1. **Objects connect themselves.** A placed house gets a drive from the nearest path or the area edge
+   to its door, and the ground levels for it. It's the same claim mechanism plus a path.
+2. **Stone per terrain.** Steep-ground shading and faces use the terrain's stone (granite in the
+   highlands, limestone in the Hill Country). The shading is limestone everywhere today.
+3. **More terrains as data:** desert, coast (needs water, C9), farmland (fields as cover patches with
+   hedgerows as `woods` lines).
+4. **Regions:** `{ "use": "outdoors", "terrain": ["meadow", "forest"] }` blends terrains across the area.
+
 ## What is left to prove
 
 The bet is that new kinds of place are data, not code. In order:

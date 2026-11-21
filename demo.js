@@ -125,6 +125,7 @@ const fresh = {
   homestead: async () => (await fetch('scenes/homestead.json')).json(),
   ridge: async () => (await fetch('scenes/ridge.json')).json(),
   texas: async () => (await fetch('scenes/texas.json')).json(),
+  outdoors: async () => ({ use: 'outdoors', terrain: 'hill-country' }),
 };
 const views = {
   specimen: { doc: null, eye: [13, 4.2, 15], target: [0, 4.2, 0] },
@@ -132,6 +133,7 @@ const views = {
   homestead: { doc: null, eye: [24, 8, 30], target: [-2, 2.5, -8] },
   ridge: { doc: null, eye: [64, 20, 54], target: [4, 5, -14] },
   texas: { doc: null, eye: [46, 12, 44], target: [-8, 5, -16] },
+  outdoors: { doc: null, eye: [92, 40, 108], target: [0, 4, -14] },
 };
 let view = 'homestead';
 
@@ -221,6 +223,7 @@ function apply(doc, { write = true } = {}) {
     if (mode === 'walk' && !ground.paths.length) setMode('orbit');
     else if (mode !== 'orbit') setMode(mode);
     syncLevers();
+    syncOutdoors();
   } catch (err) {
     console.error(err);
     status.textContent = err.message;
@@ -285,6 +288,37 @@ $('hill-add').addEventListener('click', () => {
   s.ground.children = { [`hill-${n}`]: { use: 'landform', at: [Math.round(Math.cos(a) * d), Math.round(Math.sin(a) * d)], params: { h: 3, size: 20 } }, ...kids };
   apply(s);
 });
+
+/* ---------------------------------------------------------------- outdoors in one line */
+
+// Terrain buttons switch to the one-line scene; New seed and Trees edit that one line, nothing else.
+function outdoorsDoc() { return views.outdoors.doc ?? { use: 'outdoors', terrain: 'hill-country' }; }
+function setOutdoors(next, { fade = true } = {}) {
+  views.outdoors.doc = next;
+  if (view !== 'outdoors') { show('outdoors'); return; }
+  if (fade) canvas.classList.add('pending');
+  apply(next);
+}
+for (const b of document.querySelectorAll('[data-terrain]')) b.addEventListener('click', () => setOutdoors({ ...outdoorsDoc(), terrain: b.dataset.terrain }));
+$('reseed').addEventListener('click', () => { const d = outdoorsDoc(); setOutdoors({ ...d, seed: (d.seed ?? 1) + 1 }); });
+$('add-house').addEventListener('click', () => {
+  const d = outdoorsDoc(), kids = { ...(d.children ?? {}) };
+  if (kids.house) delete kids.house; else kids.house = { use: 'house', at: [0, 8] };
+  setOutdoors({ ...d, children: kids });
+});
+let densityTimer = 0;
+$('tree-density').addEventListener('input', () => {
+  const v = +$('tree-density').value;
+  $('tree-density-out').textContent = `${Math.round(v * 100)}%`;
+  clearTimeout(densityTimer);
+  densityTimer = setTimeout(() => setOutdoors({ ...outdoorsDoc(), trees: v }, { fade: false }), 250);
+});
+function syncOutdoors() {
+  const d = views[view].doc, on = d?.use === 'outdoors';
+  for (const b of document.querySelectorAll('[data-terrain]')) b.setAttribute('aria-pressed', String(on && (d.terrain ?? 'meadow') === b.dataset.terrain));
+  $('add-house').textContent = on && d.children?.house ? 'Remove the house' : 'Place a house';
+  if (on) { $('tree-density').value = d.trees ?? 1; $('tree-density-out').textContent = `${Math.round((d.trees ?? 1) * 100)}%`; }
+}
 
 function syncLevers() {
   const f = firstOf(views[view].doc, 'landform');

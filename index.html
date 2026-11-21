@@ -120,6 +120,19 @@ code { font: 12px var(--mono); background: var(--code); padding: 1px 4px; border
     </section>
 
     <section>
+      <h2>Outdoors in one line</h2>
+      <div class="seg four" role="group" aria-label="Terrain">
+        <button type="button" data-terrain="meadow" aria-pressed="false">Meadow</button>
+        <button type="button" data-terrain="hill-country" aria-pressed="false">Hill Country</button>
+        <button type="button" data-terrain="forest" aria-pressed="false">Forest</button>
+        <button type="button" data-terrain="highlands" aria-pressed="false">Highlands</button>
+      </div>
+      <div class="row"><button type="button" id="reseed">New seed</button><button type="button" id="add-house">Place a house</button></div>
+      <div class="lever"><label for="tree-density">Trees</label><output id="tree-density-out">100%</output><input id="tree-density" type="range" min="0" max="2" step="0.05" value="1"></div>
+      <p class="note">The whole place is <code>{ "use": "outdoors" }</code>. The terrain names a landscape; trees grow where it suits each species, and anything you place keeps its ground clear.</p>
+    </section>
+
+    <section>
       <h2>Authored JSON</h2>
       <textarea id="doc" spellcheck="false" aria-label="Authored tree JSON"></textarea>
       <p id="doc-status" role="status"></p>

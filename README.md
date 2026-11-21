@@ -8,6 +8,47 @@ Procedural trees for Alian scenes. To author one, write:
 
 That gives you a 9 m oak. Its shape comes from where it is planted.
 
+## A whole place in one line
+
+```json
+{ "use": "outdoors" }
+```
+
+That gives you a 220 m meadow: rolling hills, a pond, a footpath, and oak, maple and birch growing in
+groves with open grass between. Every field is optional:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `terrain` | `"meadow"` | `meadow`, `hill-country`, `forest`, `highlands`: an alias for a whole landscape (landforms, cover and ecology) |
+| `size` | `220` | Metres, or `[x, z]` |
+| `seed` | `1` | Which place. The same seed always gives the same place; a new seed gives another. |
+| `trees` | `1` | Tree density: 0 is bare, 2 is twice as wooded |
+| `plants` | `1` | Low plant density (dry terrains) |
+| `relief` | `1` | Scales every generated height |
+| `cover` | the terrain's | Overrides the ground cover |
+| `children` | none | Foreground objects. A house, rock or any placed thing keeps its ground clear. Same keys replace generated ones. |
+
+Trees grow where the finished terrain suits each species. Each species has a preferred slope, a band
+of height within this landscape (low ground to uplands), and a liking or dislike for wet ground
+(hollows and creeks). Grove patches decide where land is wooded and where it's open, and shrubs keep
+to the grove edges. A species is picked in proportion to how well the site suits it, so stands mix
+where several species fit and stay pure where only one does. Highlands have a treeline. Nothing is
+random at view time: it's all seeded.
+
+The terrains:
+
+- **Meadow:** soft hills, a pond and a footpath. Oak and maple, birch by water, shrubs at the edges.
+- **Hill Country:** a flat-topped mesa with a bedded limestone bluff, talus, a dry creek and knolls,
+  on scrub cover. Live oak mottes on the flats, juniper everywhere, and prickly pear, yucca, agave
+  and sotol on open ground.
+- **Forest:** rolling hills, a stream and a trail, almost continuously wooded. Pine on uplands, oak
+  and maple in between, birch along the stream.
+- **Highlands:** big ridges with a granite crag and scree, a tarn and a track. Pine up to a treeline,
+  birch in wet hollows, shrubs above.
+
+The one line expands to ordinary children (`lib/landscape.js`), the same as `woods` and `rocks` do,
+so anything it makes can be overridden by authoring a child with the same key.
+
 ## Authoring
 
 | Field | Default | Meaning |
