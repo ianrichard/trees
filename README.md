@@ -49,6 +49,31 @@ The seed is the position, quantized to centimeters. Moving a tree re-rolls its b
 
 Every module takes `THREE` as an argument, as `packages/3d/src/shape/lighting.js` does in Alian.
 
+## Ground
+
+`lib/ground.js` is one pure height function. It runs in a worker for the mesh, and on the main thread for placement and the camera.
+
+```json
+{ "ground": { "children": {
+  "knoll": { "use": "landform", "at": [10, -8], "params": { "h": 3.5, "size": 30 } },
+  "ridge": { "use": "landform", "at": [-22, -34], "turn": 25, "params": { "h": 9, "size": [70, 22], "soft": [1, 0.55] } },
+  "terrace": { "use": "landform", "at": [-16, 6], "params": { "h": 1.6, "size": [16, 11], "soft": 0.25, "top": "flat" } },
+  "hollow": { "use": "landform", "at": [8, 12], "params": { "h": -1.4, "size": [12, 8] } },
+  "oak": { "use": "tree", "at": [10, -8] }
+} } }
+```
+
+- **Landform:** a footprint extruded to `h`, where negative `h` makes a hollow.
+  - `soft` sets the edge falloff per axis: 0 is a cliff edge, 1 a rounded hill.
+  - `top: "flat"` makes a terrace.
+  - `vary` adds seeded wobble, so no two hills are clones.
+- **Blending:** raises combine by smooth maximum and hollows by smooth minimum. Overlapping hills make a saddle, and authoring order never matters.
+- **Placement:** children stand at the grade, so `y` is relative to the ground under them.
+- **Horizon:** past the authored extent, the ground blends to the lowest height along that edge and runs flat to the horizon into the sky-matched fog. A pond does not sink the horizon.
+- **Mesh:** a fine grid (at most 220 cells across) plus horizon rings that share its edge resolution, so there are no cracks.
+- **Shading:** steep slopes tint toward soil, and tree crowns bake soft occlusion into the grade as their contact shadow.
+- **Shorthand:** an array document is still shorthand for the ground's children, so `[{ "use": "tree" }]` works.
+
 ## Leaf placement data
 
 Each kind carries a measured leaf inclination distribution (`leaf.angle`). Inclination is the leaf surface's angle from horizontal. All kinds share the same placement rules:

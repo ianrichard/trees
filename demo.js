@@ -5,6 +5,7 @@ import { createForest, resolveTree } from './lib/forest.js';
 import { createOutdoors } from './lib/outdoors.js';
 import { KINDS, KIND_NAMES } from './lib/species.js';
 import { rng } from './lib/grow.js';
+import { resolveGround, buildGroundArrays } from './lib/ground.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -66,9 +67,29 @@ function groveDoc() {
   return out;
 }
 
+// Rolling ground: a knoll with an oak, a long ridge of pines, a flat terrace, a hollow.
+function hillsDoc() {
+  const children = {
+    knoll: { use: 'landform', at: [10, -8], params: { h: 3.5, size: 30 } },
+    ridge: { use: 'landform', at: [-22, -34], turn: 25, params: { h: 9, size: [70, 22], soft: [1, 0.55] } },
+    terrace: { use: 'landform', at: [-16, 6], params: { h: 1.6, size: [16, 11], soft: 0.25, top: 'flat' } },
+    hollow: { use: 'landform', at: [8, 12], params: { h: -1.4, size: [12, 8] } },
+    oak: { use: 'tree', at: [10, -8], height: 11 },
+    maple: { use: 'tree', kind: 'maple', at: [-16, 6] },
+  };
+  const r = rng(77);
+  for (let i = 0; i < 46; i++) {
+    const t = r() * 2 - 1, a = 25 * Math.PI / 180, along = t * 34, across = (r() - 0.5) * 16;
+    children[`pine-${i + 1}`] = { use: 'tree', kind: 'pine', at: [Math.round((-22 + along * Math.cos(a) - across * Math.sin(a)) * 10) / 10, Math.round((-34 + along * Math.sin(a) + across * Math.cos(a)) * 10) / 10] };
+  }
+  for (let i = 0; i < 10; i++) children[`birch-${i + 1}`] = { use: 'tree', kind: 'birch', at: [Math.round((20 + r() * 14) * 10) / 10, Math.round((4 + r() * 16) * 10) / 10] };
+  return { ground: { children } };
+}
+
 const views = {
   specimen: { doc: SPECIMEN, eye: [13, 4.2, 15], target: [0, 4.2, 0], reach: 16 },
   grove: { doc: groveDoc(), eye: [26, 9, 46], target: [0, 4, -6], reach: 60 },
+  hills: { doc: hillsDoc(), eye: [2, 10, 44], target: [-10, 4, -12], reach: 70 },
 };
 let view = 'specimen';
 
@@ -77,19 +98,61 @@ let view = 'specimen';
 const editor = $('doc');
 const status = $('doc-status');
 
-function format(doc) {
-  if (doc.length <= 3) return JSON.stringify(doc, null, 2);
-  return '[\n' + doc.map((t) => '  ' + JSON.stringify(t)).join(',\n') + '\n]';
+/** Bare JSON shorthand: an array is the ground's children; a single object is one child. */
+function sceneOf(doc) {
+  if (Array.isArray(doc)) return { ground: { children: Object.fromEntries(doc.map((c, i) => [`${c.use ?? 'item'}-${i + 1}`, c])) } };
+  if (doc && doc.use) return { ground: { children: { [doc.use]: doc } } };
+  return { ground: { children: {}, ...(doc?.ground ?? {}) } };
 }
 
+/** The first child of a kind, as a live reference into the authored doc (for the levers). */
+function firstOf(doc, use) {
+  if (Array.isArray(doc)) return doc.find((c) => (c.use ?? 'tree') === use);
+  return Object.values(doc?.ground?.children ?? {}).find((c) => c.use === use);
+}
+
+function format(doc) {
+  if (Array.isArray(doc)) {
+    if (doc.length <= 3) return JSON.stringify(doc, null, 2);
+    return '[\n' + doc.map((t) => '  ' + JSON.stringify(t)).join(',\n') + '\n]';
+  }
+  const { children = {}, ...rest } = doc.ground ?? {};
+  const head = Object.entries(rest).map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)},`);
+  const kids = Object.entries(children).map(([k, v]) => `      ${JSON.stringify(k)}: ${JSON.stringify(v)}`);
+  return `{\n  "ground": {\n${head.join('\n')}${head.length ? '\n' : ''}    "children": {\n${kids.join(',\n')}\n    }\n  }\n}`;
+}
+
+// The ground mesh builds in a worker; the newest request wins.
+let groundWorker = null, groundRequest = 0;
+try {
+  groundWorker = new Worker(new URL('./lib/groundWorker.js', import.meta.url), { type: 'module' });
+  groundWorker.onmessage = ({ data }) => { if (data.id === groundRequest) outdoors.setGround(data); };
+  // If the worker cannot load here, build the newest request on the main thread instead.
+  groundWorker.onerror = () => { groundWorker = null; if (lastGround) outdoors.setGround(buildGroundArrays(lastGround.scene, { occluders: lastGround.occluders })); };
+} catch { groundWorker = null; }
+let lastGround = null;
+function buildGround(scene, occluders) {
+  const id = ++groundRequest;
+  const plain = JSON.parse(JSON.stringify(scene));
+  lastGround = { scene: plain, occluders };
+  if (groundWorker) groundWorker.postMessage({ id, scene: plain, occluders });
+  else outdoors.setGround(buildGroundArrays(plain, { occluders }));
+}
+
+let ground = resolveGround({});
 function apply(doc, { write = true } = {}) {
   try {
-    if (!Array.isArray(doc)) doc = [doc];
     const t0 = performance.now();
-    const trees = forest.set(doc);
+    const scene = sceneOf(doc);
+    ground = resolveGround(scene);
+    const kids = Object.values(scene.ground.children ?? {});
+    for (const c of kids) if (c.use && !['tree', 'landform'].includes(c.use)) throw new Error(`Unknown use "${c.use}": try tree or landform`);
+    const trees = forest.set(kids.filter((c) => (c.use ?? 'tree') === 'tree'), { heightAt: ground.heightAt });
+    buildGround(scene, forest.occluders());
     views[view].doc = doc;
     if (write) editor.value = format(doc);
-    status.textContent = `${trees.length} ${trees.length === 1 ? 'tree' : 'trees'} · grown in ${Math.round(performance.now() - t0)} ms`;
+    const hills = ground.landforms ? ` · ${ground.landforms} landform${ground.landforms === 1 ? '' : 's'}` : '';
+    status.textContent = `${trees.length} ${trees.length === 1 ? 'tree' : 'trees'}${hills} · ${Math.round(performance.now() - t0)} ms`;
     status.dataset.state = 'ok';
     syncLevers();
   } catch (err) {
@@ -118,9 +181,11 @@ for (const k of KIND_NAMES) {
 }
 const heightIn = $('height'), widthIn = $('width'), seedIn = $('seed'), seedAuto = $('seed-auto');
 
-function edit(fn) {
+function edit(fn, use = 'tree') {
   const doc = structuredClone(views[view].doc);
-  fn(doc[0]);
+  const target = firstOf(doc, use);
+  if (!target) return;
+  fn(target);
   apply(doc);
   if (view === 'specimen') frame();
 }
@@ -135,10 +200,30 @@ $('move').addEventListener('click', () => edit((t) => {
   t.at = [Math.round((x + 3.7) * 10) / 10, z];
   delete t.seed;
 }));
-$('reset').addEventListener('click', () => { apply(view === 'specimen' ? [{ use: 'tree' }] : groveDoc()); frame(); });
+$('reset').addEventListener('click', () => { apply({ specimen: () => [{ use: 'tree' }], grove: groveDoc, hills: hillsDoc }[view]()); frame(); });
+
+/* ---------------------------------------------------------------- hill levers (edit the first landform) */
+
+const hill = (id, fn) => $(id).addEventListener('input', () => edit((f) => { f.params = f.params ?? {}; fn(f.params, +$(id).value); }, 'landform'));
+hill('hill-h', (p, v) => { p.h = v; });
+hill('hill-sx', (p, v) => { const [, z] = Array.isArray(p.size) ? p.size : [p.size ?? 10, p.size ?? 10]; p.size = [v, z]; });
+hill('hill-sz', (p, v) => { const [x] = Array.isArray(p.size) ? p.size : [p.size ?? 10]; p.size = [x, v]; });
+hill('hill-kx', (p, v) => { const [, z] = Array.isArray(p.soft) ? p.soft : [p.soft ?? 1, p.soft ?? 1]; p.soft = [v, z]; });
+hill('hill-kz', (p, v) => { const [x] = Array.isArray(p.soft) ? p.soft : [p.soft ?? 1]; p.soft = [x, v]; });
+$('hill-flat').addEventListener('change', () => edit((f) => { f.params = f.params ?? {}; if ($('hill-flat').checked) f.params.top = 'flat'; else delete f.params.top; }, 'landform'));
+$('hill-add').addEventListener('click', () => {
+  const doc = structuredClone(views[view].doc), kids = sceneOf(doc).ground.children;
+  const n = Object.keys(kids).filter((k) => k.startsWith('hill')).length + 1;
+  const a = n * 2.4, d = 18 + n * 4;
+  const scene = Array.isArray(doc) ? sceneOf(doc) : doc;
+  // New hills go first so the levers edit the one just added.
+  scene.ground.children = { [`hill-${n}`]: { use: 'landform', at: [Math.round(Math.cos(a) * d), Math.round(Math.sin(a) * d)], params: { h: 3, size: 20 } }, ...scene.ground.children };
+  apply(scene);
+});
 
 function syncLevers() {
-  const first = views[view].doc[0] ?? { use: 'tree' };
+  syncHill();
+  const first = firstOf(views[view].doc, 'tree') ?? { use: 'tree' };
   const t = resolveTree(first);
   for (const b of kindRow.children) b.setAttribute('aria-pressed', String(b.dataset.kind === t.kind));
   const spec = KINDS[t.kind];
@@ -150,6 +235,22 @@ function syncLevers() {
   seedIn.disabled = seedAuto.checked;
   seedIn.value = t.variant;
   $('seed-out').textContent = seedAuto.checked ? `from position (${(first.at ?? [0, 0]).join(', ')})` : `variant ${t.variant}`;
+}
+
+function syncHill() {
+  const f = firstOf(views[view].doc, 'landform');
+  $('hill-levers').hidden = !f;
+  if (!f) return;
+  const p = f.params ?? {}, size = Array.isArray(p.size) ? p.size : [p.size ?? 10, p.size ?? 10], soft = Array.isArray(p.soft) ? p.soft : [p.soft ?? 1, p.soft ?? 1];
+  const set = (id, v, text) => { $(id).value = v; $(`${id}-out`).textContent = text; };
+  set('hill-h', p.h ?? 1, `${(p.h ?? 1).toFixed(1)} m`);
+  set('hill-sx', size[0], `${size[0].toFixed(0)} m`);
+  set('hill-sz', size[1], `${size[1].toFixed(0)} m`);
+  set('hill-kx', soft[0], soft[0] < 0.05 ? 'cliff' : soft[0].toFixed(2));
+  set('hill-kz', soft[1], soft[1] < 0.05 ? 'cliff' : soft[1].toFixed(2));
+  $('hill-flat').checked = p.top === 'flat';
+  const key = Object.entries(sceneOf(views[view].doc).ground.children).find(([, c]) => c === f || JSON.stringify(c) === JSON.stringify(f))?.[0];
+  $('hill-name').textContent = key ? `"${key}"` : 'first landform';
 }
 
 /* ---------------------------------------------------------------- light and wind */
@@ -167,13 +268,14 @@ function frame() {
   if (view === 'specimen') {
     const t = resolveTree(v.doc[0] ?? {});
     const h = t.height, d = Math.max(h, t.width) * 1.85 + 2;
-    camera.position.set(d * 0.62, Math.max(1.4, h * 0.42), d * 0.78);
-    controls.target.set(t.x, h * 0.47, t.z);
-    outdoors.place(new THREE.Vector3(t.x, 0, t.z), Math.max(h, t.width) * 1.2 + 2);
+    const gy = ground.heightAt(t.x, t.z);
+    camera.position.set(t.x + d * 0.62, gy + Math.max(1.4, h * 0.42), t.z + d * 0.78);
+    controls.target.set(t.x, gy + h * 0.47, t.z);
+    outdoors.place(new THREE.Vector3(t.x, gy, t.z), Math.max(h, t.width) * 1.2 + 2);
   } else {
     camera.position.set(...v.eye);
     controls.target.set(...v.target);
-    outdoors.place(new THREE.Vector3(0, 0, -10), v.reach);
+    outdoors.place(new THREE.Vector3(v.target[0], 0, v.target[2] - 4), v.reach);
   }
   controls.update();
 }
@@ -221,6 +323,6 @@ function loop() {
 outdoors.setHour(+hourIn.value);
 $('hour-out').textContent = hourText(+hourIn.value);
 forest.uniforms.uWind.value = +windIn.value;
-show(location.hash === '#grove' ? 'grove' : 'specimen');
+show(views[location.hash.slice(1)] ? location.hash.slice(1) : 'specimen');
 loop();
-window.__trees = { forest, outdoors, camera, controls, show, renderer, scene };
+window.__trees = { forest, outdoors, camera, controls, show, renderer, scene, ground: () => ground };
