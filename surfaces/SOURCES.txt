@@ -1,0 +1,6 @@
+Stone surface sources, CC0
+
+Limestone — Marble Cliff 04 by Amal Kumar, Poly Haven (12.6 m scan)
+https://polyhaven.com/a/marble_cliff_04
+
+2k diffuse and OpenGL normal maps, encoded as WebP (quality 74 and 82).

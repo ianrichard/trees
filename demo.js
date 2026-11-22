@@ -106,6 +106,14 @@ function detailFor(kind) {
   for (const [key, suffix, srgb] of [['map', 'albedo', true], ['normalMap', 'normal', false]]) {
     loader.load(`surfaces/${kind}-${suffix}.webp`, (t) => {
       t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      // The photo's own linear mean, so the material reads it relative to itself.
+      if (srgb) {
+        const c = document.createElement('canvas'); c.width = c.height = 64;
+        const g = c.getContext('2d'); g.drawImage(t.image, 0, 0, 64, 64);
+        const px = g.getImageData(0, 0, 64, 64).data, sum = [0, 0, 0];
+        for (let i = 0; i < px.length; i += 4) for (let k = 0; k < 3; k++) sum[k] += Math.pow(px[i + k] / 255, 2.2);
+        d.mean = sum.map((v) => v / 4096);
+      }
       d[key] = t; done();
     }, undefined, () => {});
   }

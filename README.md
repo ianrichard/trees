@@ -268,14 +268,20 @@ the landform. `params.face: false` turns it off, and `scope.stone.use` picks the
 
 ## Stone detail (hybrid colour and texture)
 
-Stone colour, strata, cracks, stains and moss are procedural, so one stone kind can be retinted. A
-photographic or generated detail set adds real grain on top of that without replacing the colour:
+A photographic set gives stone its real surface; the procedural layers (strata, stains, soil on
+ledges, moss, occlusion) stay on top, so one stone kind can still be retinted:
 
-- `surfaces/<stone>-albedo.webp`: only its luminance is used, modulating the procedural tone around
-  its own mean. Grey or colour both work; aim for a mean brightness near 35%.
+- `surfaces/<stone>-albedo.webp`: read relative to its own mean (measured on load), so it brings
+  real grain, pitting and staining while the stone kind keeps its brightness. Per stone, `mix` is how
+  much the photo replaces the procedural base and `chroma` blends from the stone's tint (0) to the
+  photo's own hues (1). Limestone: 0.85 and 0.6.
 - `surfaces/<stone>-normal.webp`: an OpenGL-convention tangent-space normal map.
 - Both should be seamless. They are sampled triplanar in world space, so there are no UVs and no
-  seams, and repeat every 1.6 m (`detail.scale`).
+  seams, and repeat every `detail.scale` metres: use the photo's real size where it has one
+  (limestone: 8 m of a 12.6 m scan).
+- Limestone uses Poly Haven's "Marble Cliff 04" by Amal Kumar (CC0), 2k, WebP: a weathered
+  sedimentary face with the buff colour, vertical rain streaks and fractures of Hill Country bluffs.
+  Sources are listed in `surfaces/SOURCES.txt`.
 - `<stone>` is `limestone`, `granite`, `sandstone` or `slate`. A missing file leaves the procedural
   finish, so the lab never breaks.
 - In code: `stoneMaterial(THREE, stone, { map, normalMap, scale, mix })`, or `material.setDetail()`
