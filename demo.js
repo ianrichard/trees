@@ -18,8 +18,8 @@ import { buildCliffs } from './lib/cliffs.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
-// Lab A/B levers: the Edges buttons (remembered per browser) or ?aa=taa|msaa&grass=stable|legacy.
-const LAB_DEFAULTS = { aa: 'taa', grass: 'stable', tone: 'neutral', ao: 'n8ao' };
+// Lab A/B levers: the Edges buttons (remembered per browser) or ?aa=taa|msaa&ao=n8ao|off&tone=neutral|aces|agx.
+const LAB_DEFAULTS = { aa: 'taa', tone: 'neutral', ao: 'n8ao' };
 const query = new URLSearchParams(location.search);
 const remembered = (() => { try { return JSON.parse(localStorage.getItem('trees-lab') ?? '{}'); } catch { return {}; } })();
 const lab = { get: (k) => query.get(k) ?? remembered[k] ?? LAB_DEFAULTS[k] };
@@ -87,7 +87,7 @@ for (const name of ['oak', 'birch', 'pine']) {
 
 const forest = createForest(THREE, { barkTextures });
 scene.add(forest.group);
-const grass = createGrass(THREE, { uniforms: forest.uniforms, stable: lab.get('grass') !== 'legacy' });
+const grass = createGrass(THREE, { uniforms: forest.uniforms, lawn: outdoors.ground.userData.lawn });
 scene.add(grass.mesh);
 const features = new THREE.Group();
 scene.add(features);
@@ -216,8 +216,9 @@ function apply(doc, { write = true } = {}) {
       m.castShadow = m.receiveShadow = true; m.name = 'plants';
       features.add(m);
     }
-    grass.setGround(ground);
-    buildGround(resolved.scene, forest.occluders());
+    const occluders = forest.occluders();
+    grass.setGround(ground, { occluders });
+    buildGround(resolved.scene, occluders);
     // Compile every shader variant now (far-detail trees included), so the first tree to change
     // detail mid-walk doesn't stall a frame compiling its program.
     const hidden = [];
