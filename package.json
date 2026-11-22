@@ -1,0 +1,8 @@
+{
+  "name": "alian-trees-lab",
+  "private": true,
+  "type": "module",
+  "description": "Static lab: no build. Tests use Vitest, as Alian does, so they carry over unchanged.",
+  "scripts": { "test": "vitest run" },
+  "devDependencies": { "three": "0.180.0", "vitest": "^5.1.1" }
+}
