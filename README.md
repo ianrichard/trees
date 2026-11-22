@@ -233,7 +233,12 @@ Leaf colours are calibrated from measured reflectance, not picked by eye:
 - Undersides are paler and greyer than tops. A card's back face is the leaf's underside.
 - Light through backlit leaves is only mildly yellower than reflected light.
 - Grass and ground greens follow the same ratios. Bark comes from CC0 photographs.
-- Stone: limestone is a weathered buff with dark vertical water streaks below its ledges.
+- Stone: Hill Country limestone is cream to pale grey with warm ochre iron staining and dark water
+  streaks below its ledges (from reference photos). Stone is matte: environment specular is cut
+  to a third, so boulders no longer look metallic.
+- Loose boulders break by their stone. Limestone and slate fall as blocky slabs (many shallow
+  fracture planes, flattened tops); granite stays as rounded masses. Form and geology are
+  independent: any form (`rock`, `outcrop`, cliff face) can take any stone.
 
 ## Rock faces
 
@@ -241,11 +246,15 @@ Where a landform's edge is steep (a drop of at least 2.5 m, steeper than about 5
 builds a wall of bedded rock along the rim. A height field can't hold a vertical or overhanging
 face, but a wall offset per vertex can. Its shape follows how sedimentary bluffs weather:
 
-- **Beds:** layers 0.3–1.5 m thick, alternating hard and soft. Hard beds stand proud with flat,
-  chipped faces; soft beds weather back into notches, so ledges and small overhangs form. Beds
-  wave gently along the face.
-- **Joints:** vertical fractures every 1.5–5 m cut the face into blocks. Each block has retreated
-  its own amount, joints open into V notches, and now and then a block has fallen out.
+- **Beds:** bimodal, as Hill Country limestone is. Massive beds 0.9–2.2 m thick have broad, nearly
+  flat faces with corners worn round. Each block sits at its own depth and leans a little, and
+  scattered round solution pockets are dissolved into the face. Between them, packets of thin
+  plates (6–24 cm each) weather back into deep, stepped notches; their shadow lines are most of the
+  look. Beds dip up to ±2° along the face and wave gently.
+- **Joints:** major joints open as wide clefts through the massive beds. The thin plates break into
+  small blocks, and now and then a whole massive block has fallen out.
+- **Light:** recessed rock (notches, pockets, clefts) carries baked occlusion. It goes warm and
+  dark and loses the sky's blue fill, so notches read as shadow, not blue-grey.
 - **Caprock:** the top bed is thickest and hardest, so it projects over the rim and rounds back.
 
 Each face is a closed solid: the front, a lip over the rim, a back skin into the hill and end caps,

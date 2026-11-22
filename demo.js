@@ -99,7 +99,7 @@ function detailFor(kind) {
 }
 const withDetail = (kind, m) => { const d = detailFor(kind); d.listeners.push(m); if (d.map || d.normalMap) m.setDetail(d); return m; };
 const cliffMats = new Map();
-const cliffFor = (kind) => { if (!cliffMats.has(kind)) { const m = withDetail(kind, stoneMaterial(THREE, kind)); m.side = THREE.DoubleSide; cliffMats.set(kind, m); } return cliffMats.get(kind); };
+const cliffFor = (kind) => { if (!cliffMats.has(kind)) { const m = withDetail(kind, stoneMaterial(THREE, kind)); m.side = THREE.DoubleSide; m.vertexColors = true; /* occlusion from the form */ cliffMats.set(kind, m); } return cliffMats.get(kind); };
 
 /* ---------------------------------------------------------------- documents */
 

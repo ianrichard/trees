@@ -103,8 +103,9 @@ Then, from Ian's review:
 
 Still open on these:
 
-- **Cliffs:** plan-view embayments (whole sections of face retreating along big joints), talus
-  generated from the beds it fell from, and moss and soil collecting on ledge tops.
+- **Cliffs:** life on the ledges (juniper, grass and sotol growing out of the bedding, as in the
+  reference photos). Talus generated from the beds it fell from. Creek-cut undercut ledges once
+  water lands (C9).
 - **Photo textures (S1)** are blocked here: the CC0 hosts aren't on this environment's network.
   Cover and stone shading are built so S1's maps drop into the same slots.
 - **Plants are static.** Yucca and sotol leaves could take the grass sway cheaply.
