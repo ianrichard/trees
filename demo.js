@@ -12,13 +12,14 @@ import { buildHouse } from './lib/house.js';
 import { createGrass } from './lib/grass.js';
 import { createTour, createWalk } from './lib/explore.js';
 import { createTemporalAA } from './lib/taa.js';
+import { N8AOPass } from 'n8ao';
 import { buildPlants, plantMaterial } from './lib/plants.js';
 import { buildCliffs } from './lib/cliffs.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
 // Lab A/B levers: the Edges buttons (remembered per browser) or ?aa=taa|msaa&grass=stable|legacy.
-const LAB_DEFAULTS = { aa: 'taa', grass: 'stable', tone: 'neutral' };
+const LAB_DEFAULTS = { aa: 'taa', grass: 'stable', tone: 'neutral', ao: 'n8ao' };
 const query = new URLSearchParams(location.search);
 const remembered = (() => { try { return JSON.parse(localStorage.getItem('trees-lab') ?? '{}'); } catch { return {}; } })();
 const lab = { get: (k) => query.get(k) ?? remembered[k] ?? LAB_DEFAULTS[k] };
@@ -58,7 +59,20 @@ controls.minDistance = 2;
 controls.maxDistance = 260;
 
 const outdoors = createOutdoors(THREE, { renderer, scene, Sky, shadowSize: 2048, offscreen: useTAA });
-const taa = useTAA ? createTemporalAA(THREE, renderer) : null;
+// Ambient occlusion: N8AO (Alian's pass) draws the jittered beauty frame and darkens crevices, cliff
+// notches, tree bases and grass roots by what the screen-space depth says the sky can't reach. It
+// runs before the TAA resolve, so its per-frame noise integrates away with the jitter. Outdoor
+// settings: a metre-scale radius (Alian's rooms use 0.25 m) so notches and groves read, not just
+// contact lines. It multiplies the lit colour, so intensity stays modest to spare sunlit faces.
+const ao = useTAA && lab.get('ao') === 'n8ao' ? new N8AOPass(scene, camera, 1, 1) : null;
+if (ao) {
+  Object.assign(ao.configuration, { aoRadius: 1.6, distanceFalloff: 1.0, intensity: 2.0, gammaCorrection: false });
+  ao.setQualityMode('Medium');
+}
+const taa = useTAA ? createTemporalAA(THREE, renderer, ao ? {
+  draw: (target) => { ao.render(renderer, target, null); return ao.beautyRenderTarget.depthTexture; },
+  resize: (w, h) => ao.setSize(w, h),
+} : {}) : null;
 
 /* ---------------------------------------------------------------- bark textures (optional) */
 const loader = new THREE.TextureLoader();
@@ -532,7 +546,7 @@ const start = location.hash.slice(1);
 await show(views[start] ? start : 'homestead');
 loop();
 window.__trees = {
-  forest, outdoors, camera, controls, show, setMode, renderer, scene, grass, ground: () => ground, apply,
+  forest, outdoors, camera, controls, show, setMode, renderer, scene, grass, ao, ground: () => ground, apply,
   doc: () => views[view].doc,
   /** Stop the clock and render one frame dt seconds later (for frame-by-frame checks). */
   step(dt) { fixed = fixed ?? { t: prev }; fixed.t += dt; tick(fixed.t, dt); },

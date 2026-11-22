@@ -177,7 +177,8 @@ The bet is that new kinds of place are data, not code. In order:
 
 1. **Composer pass shape.** Wrap `TemporalResolveShader` as an `EffectComposer` pass that reads
    N8AO's beauty depth. It replaces FXAA, and the beauty target can drop its MSAA samples. TAA also
-   denoises AO.
+   denoises AO. The lab already runs this order (N8AO beauty → TAA resolve via `createTemporalAA`'s
+   `draw` hook); Alian's N8AO settings need the outdoor radius (1.6 m) for landscapes.
 2. **Per-instance ghosting and selection** for instanced trees. Alian's `visibility.js` fades
    meshes, but trees are one draw per kind and variant, so this needs an instance attribute.
 3. **Composition sugar.** Covers and presets (`"cover": "meadow"`, a `woods` mix per region) so a

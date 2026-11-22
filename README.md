@@ -212,7 +212,8 @@ Touching the view hands the camera back to Orbit.
 - Grass fades in by distance.
 - The shadow frustum snaps to its own texels, and its reach changes in steps.
 - Ground and rocks are built once per edit.
-- Temporal antialiasing (`lib/taa.js`, the default) jitters the camera by a sub-pixel offset and blends each frame into a reprojected history, so thin blades and leaf edges stop crawling. The **Edges** control switches to plain MSAA for comparison. Measurements and next steps are in [PLAN.md](PLAN.md).
+- Temporal antialiasing (`lib/taa.js`, the default) jitters the camera by a sub-pixel offset and blends each frame into a reprojected history, so thin blades and leaf edges stop crawling. The **Edges** control switches to plain MSAA for comparison.
+- Ambient occlusion is N8AO 2.0.1, Alian's pass, drawn in front of the TAA resolve so its noise integrates away with the jitter. It uses an outdoor radius (1.6 m; Alian's rooms use 0.25 m), so bed notches, joints, tree bases and grass roots darken by what the screen says the sky can't reach. The **Occlusion** lever turns it off for comparison; it runs with TAA only. Baked occlusion (crowns, cliff notches) still stacks on it, to be trimmed where the pass does better. Measurements and next steps are in [PLAN.md](PLAN.md).
 - Grass lights both card faces from above, keeps alpha through its mips, calms its sway with distance and melts into the lawn colour before it shrinks.
 - Procedural path and stone detail fades to its mean tone once it is finer than a couple of pixels.
 - `__trees.step(dt)` drives exact frames for frame-by-frame pop checks.
@@ -258,7 +259,9 @@ face, but a wall offset per vertex can. Its shape follows how sedimentary bluffs
 - **Caprock:** the top bed is thickest and hardest, so it projects over the rim and rounds back.
 
 Each face is a closed solid: the front, a lip over the rim, a back skin into the hill and end caps,
-so no view can see behind or through it. Whole sections of face also step back along major joints
+so no view can see behind or through it. A face never ends as a cut block: over its last 6 m it
+leans back along the real ground profile until the hillside covers it, so the bluff dies into the
+slope the way an outcrop does. Whole sections of face also step back along major joints
 every 8–20 m, so from above the cliff doesn't follow one smooth line. The wall's base sinks below
 grade; a `rocks` group at the foot makes the talus. It is seeded from
 the landform. `params.face: false` turns it off, and `scope.stone.use` picks the stone.
@@ -310,7 +313,7 @@ The full per-species dataset (138 species) is Chianucci et al. 2018, *Annals of 
 python3 -m http.server 8000
 ```
 
-Then open `localhost:8000` (or `#grove`). three.js 0.180.0, Alian's version, loads from jsDelivr through the import map.
+Then open `localhost:8000` (or `#grove`). three.js 0.180.0 and N8AO 2.0.1, Alian's versions, load from jsDelivr through the import map.
 
 ## Porting into Alian
 
