@@ -126,9 +126,11 @@ Every module takes `THREE` as an argument, as `packages/3d/src/shape/lighting.js
   - `vary` adds seeded wobble, so no two hills are clones.
 - **Blending:** raises combine by smooth maximum and hollows by smooth minimum. Overlapping hills make a saddle, and authoring order never matters.
 - **Placement:** children stand at the grade, so `y` is relative to the ground under them.
-- **Horizon:** past the authored extent, the ground blends to the lowest height along that edge and runs flat to the horizon (into the sky-matched haze when it is on). A pond does not sink the horizon.
+- **Edges:** `edge` picks how the world ends.
+  - `"horizon"` (default), for whole places: past the authored extent the ground blends to the lowest height along that edge and runs flat to the horizon (into the sky-matched haze when it is on). A pond does not sink the horizon. The camera's target can't leave the authored ground, so you never reach the empty plain.
+  - `"cut"`, for a lot, such as a house on a quarter acre: `{ "edge": "cut", "size": [32, 32] }` (centred on `at`). The surface stops at the lot line and the sides show the soil profile by depth: a root mat, dark topsoil, mottled subsoil, pale caliche, then bedded limestone, down to a solid base. Trees, plants, rocks, grass and cliff runs outside the line are left out. The **Lot** scene is one.
 - **Mesh:** a fine grid (at most 220 cells across) plus horizon rings that share its edge resolution, so there are no cracks.
-- **Shading:** steep slopes tint toward soil, and tree crowns bake soft occlusion into the grade as their contact shadow.
+- **Shading:** steep slopes tint toward soil, tree crowns bake soft occlusion into the grade as their contact shadow, and a slow hue drift makes drier, yellower patches and lusher blue-green ones. Grass takes the same shade at its root (`makeGroundShade`), and thins under crowns where litter takes over.
 - **Shorthand:** an array document is still shorthand for the ground's children, so `[{ "use": "tree" }]` works.
 
 ## Scenes
@@ -245,18 +247,29 @@ Leaf colours are calibrated from measured reflectance, not picked by eye:
 
 Where a landform's edge is steep (a drop of at least 2.5 m, steeper than about 55°), `lib/cliffs.js`
 builds a wall of bedded rock along the rim. A height field can't hold a vertical or overhanging
-face, but a wall offset per vertex can. Its shape follows how sedimentary bluffs weather:
+face, but a wall offset per vertex can. The face is weathered, not drawn: `weatherFace` runs the
+process over a grid on the face (0.3 m along it, 8 cm up it) for 72 steps, about half a second per
+scene:
 
-- **Beds:** bimodal, as Hill Country limestone is. Massive beds 0.9–2.2 m thick have broad, nearly
-  flat faces with corners worn round. Each block sits at its own depth and leans a little, and
-  scattered round solution pockets are dissolved into the face. Between them, packets of thin
-  plates (6–24 cm each) weather back into deep, stepped notches; their shadow lines are most of the
-  look. Beds dip up to ±2° along the face and wave gently.
-- **Joints:** major joints open as wide clefts through the massive beds. The thin plates break into
-  small blocks, and now and then a whole massive block has fallen out.
-- **Light:** recessed rock (notches, pockets, clefts) carries baked occlusion. It goes warm and
-  dark and loses the sky's blue fill, so notches read as shadow, not blue-grey.
-- **Caprock:** the top bed is thickest and hardest, so it projects over the rim and rounds back.
+- **Beds:** bimodal, as Hill Country limestone is: massive beds 0.9–2.2 m thick, and packets of
+  thin plates (6–24 cm each) between them. Beds dip up to ±2° along the face and wave gently.
+- **Weathering:** each cell retreats at its rock's erodibility. Thin plates go fast and massive beds
+  slowly, faster near joints where water gets in and slower below grade under the talus.
+- **Shelter:** rain falls at about 45°, so rock recessed under rock above weathers less. Notches
+  deepen and then self-limit.
+- **Collapse:** when a block (one bed between two joints) overhangs its support by more than its
+  thickness and hardness can hold, the whole block falls and the face behind it is fresh. Ledges,
+  steps and fallen-block recesses come from this.
+- **Rounding:** corners soften by slow diffusion, more on soft rock.
+- **The process leaves the colour:** each cell's exposure age and the drip streaks below every lip
+  go to the shader. Fresh breaks are cream to buff, old faces weather grey and carry dark and orange
+  lichen, dark cyanobacteria streaks run down from lips, and flat tops hold soil and grass.
+- **Kept local:** the whole face retreats as it weathers, but where it stands is the landform's
+  choice, so most of the large-scale lean is removed and the local relief is kept.
+- **Pockets and caprock:** round solution pockets are dissolved into massive faces, and the top bed
+  projects over the rim and rounds back.
+- **Light:** recessed rock carries baked occlusion and loses the sky's blue fill, so notches read as
+  shadow, not blue-grey.
 
 Each face is a closed solid: the front, a lip over the rim, a back skin into the hill and end caps,
 so no view can see behind or through it. A face never ends as a cut block: over its last 6 m it
@@ -271,10 +284,10 @@ the landform. `params.face: false` turns it off, and `scope.stone.use` picks the
 A photographic set gives stone its real surface; the procedural layers (strata, stains, soil on
 ledges, moss, occlusion) stay on top, so one stone kind can still be retinted:
 
-- `surfaces/<stone>-albedo.webp`: read relative to its own mean (measured on load), so it brings
-  real grain, pitting and staining while the stone kind keeps its brightness. Per stone, `mix` is how
-  much the photo replaces the procedural base and `chroma` blends from the stone's tint (0) to the
-  photo's own hues (1). Limestone: 0.85 and 0.6.
+- `surfaces/<stone>-albedo.webp`: grain on top of the stone's own tones, never a replacement. Its
+  brightness relative to its own mean (measured on load) modulates them by `mix`, and `chroma` lets
+  in that much of its relative hue variation (clamped). Limestone: 0.7 and 0.5. The shapes and
+  tones have to look right without it; the photo only adds the last scale of detail.
 - `surfaces/<stone>-normal.webp`: an OpenGL-convention tangent-space normal map.
 - Both should be seamless. They are sampled triplanar in world space, so there are no UVs and no
   seams, and repeat every `detail.scale` metres: use the photo's real size where it has one
@@ -289,10 +302,34 @@ ledges, moss, occlusion) stay on top, so one stone kind can still be retinted:
 
 ## Time of day
 
-The bar at the top of the view sets the hour (6:00–20:00). ▶ plays dawn to dusk in 40 s, and
-**Face sun** turns the camera toward the sun from where you stand. While the day plays, the sun, its
-light and the sky move every frame, and the ambient light refreshes about every 9 game-minutes. The
-sun disc is drawn about twice its true 0.53° so it reads on a phone.
+The bar at the top of the view sets the hour, 0:00–24:00. ▶ plays the whole day and night in about
+a minute, and **Face sun** turns the camera toward the sun from where you stand (toward the moon
+after dark). While the day plays, the sun, its light and the sky move every frame, and the ambient
+light refreshes about every 9 game-minutes.
+
+- **Sun:** a disc drawn about twice its true 0.53°, with a soft limb and a warm aureole, so it reads
+  on a phone.
+- **Night:** the sun keeps going round below the horizon. One sky shader patch (on the visible sky
+  and on the copy the ambient light and fog colour are read from) adds:
+  - a deep blue glow, lighter toward the horizon and the moon
+  - the moon: a lit sphere about 3.5 times true size, its phase from the real sun direction, maria
+    and craters from noise, limb darkening and a halo. It rides low (8–13°), as in moonrise
+    photographs, because the orbit camera never looks above level.
+  - stars: hashed on the sky sphere, brighter ones rarer, twinkling near the horizon, thicker along
+    a faint Milky Way
+- **Night light:** the shadowing light becomes cool moonlight, and exposure rises so the scene glows
+  rather than going black. The TAA output applies a night grade (desaturated and shifted blue, the
+  Purkinje shift), so it reads as night and not as a dim day.
+- **Exposure:** daylight is exposed so an 18% grey card in full sun lands near the middle of the
+  display range, as a photograph would.
+
+## Trees meeting the ground
+
+A trunk meets the ground as roots, not as a cylinder in a plane. The root collar flares into 4–6
+buttress lobes (sharpened cosines, strongest at the collar), and the trunk carries on half a metre
+below grade, spreading as it goes. Wherever the ground cuts through, flat or sloped, the soil line
+traces the roots, and a tree on a slope never shows a floating downhill edge. Grass thins under the
+crown, and the crown's contact shade darkens the ground there.
 
 ## Leaf placement data
 
