@@ -379,7 +379,7 @@ function syncLevers() {
 const hourIn = $('hour'), windIn = $('wind'), hazeIn = $('haze');
 const setHaze = () => { outdoors.setHaze(+hazeIn.value); $('haze-out').textContent = +hazeIn.value === 0 ? 'Off' : `${Math.round(+hazeIn.value * 100)}%`; };
 hazeIn.addEventListener('input', setHaze);
-const hourText = (h) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
+const hourText = (h) => { const m = Math.round(h * 60) % 1440; return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
 let pendingHour = null;
 // One hour value, two sliders: the panel lever and the one on the stage.
 const hourStage = $('hour-stage');
@@ -400,8 +400,10 @@ playBtn.addEventListener('click', () => { dayPlay = !dayPlay; if (!dayPlay) pend
 // the upper part of the frame with the land below it.
 $('face-sun').addEventListener('click', () => {
   if (mode !== 'orbit') setMode('orbit');
-  const c = camera.position, sd = outdoors.sunDir, d = Math.max(12, c.distanceTo(controls.target));
-  const az = Math.atan2(sd.z, sd.x), elev = Math.asin(sd.y), pitch = Math.max(-0.2, elev - 0.12);
+  // After dark there is no sun to face: face the moon.
+  const c = camera.position, sd = outdoors.state.night > 0.5 ? outdoors.moonDir : outdoors.sunDir, d = Math.max(12, c.distanceTo(controls.target));
+  // Orbit never looks above level (the camera stays above its target), so pitch tops out just under 0.
+  const az = Math.atan2(sd.z, sd.x), elev = Math.asin(sd.y), pitch = Math.min(-0.03, Math.max(-0.2, elev - 0.12));
   controls.target.set(c.x + Math.cos(az) * Math.cos(pitch) * d, c.y + Math.sin(pitch) * d, c.z + Math.sin(az) * Math.cos(pitch) * d);
   controls.update();
 });
@@ -508,8 +510,10 @@ function tick(t, dt) {
   worst = Math.max(worst, t - prev);
   prev = t;
   if (dayPlay) {
-    let h = +hourIn.value + dt * 14 / 40;
-    if (h > 20) h = 6;
+    // A whole day and night in a minute; the night passes a little faster than the day.
+    const hr = +hourIn.value, nightHour = hr < 6 || hr > 20;
+    let h = hr + dt * (nightHour ? 24 / 40 : 14 / 40);
+    if (h >= 24) h -= 24;
     setHourUI(h, null);
   }
   if (pendingHour !== null) {
@@ -535,6 +539,7 @@ function tick(t, dt) {
   grass.update(camera);
   outdoors.treeLight(forest.uniforms, camera);
   renderer.info.reset();
+  taa?.setNight(outdoors.state.night);
   if (taa) { forest.uniforms.uDitherShift.value = (forest.uniforms.uDitherShift.value + 0.618034) % 1; taa.render(scene, camera); }
   else renderer.render(scene, camera);
   frames++;

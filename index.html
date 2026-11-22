@@ -91,7 +91,7 @@ code { font: 12px var(--mono); background: var(--code); padding: 1px 4px; border
     <div class="sunbar" role="group" aria-label="Time of day">
       <button type="button" id="day-play" aria-pressed="false" aria-label="Play the day">▶</button>
       <span aria-hidden="true">☀</span>
-      <input id="hour-stage" type="range" min="6" max="20" step="0.05" aria-label="Time of day">
+      <input id="hour-stage" type="range" min="0" max="24" step="0.05" aria-label="Time of day">
       <output id="hour-stage-out"></output>
       <button type="button" id="face-sun" aria-label="Turn toward the sun">Face sun</button>
     </div>
@@ -163,7 +163,7 @@ code { font: 12px var(--mono); background: var(--code); padding: 1px 4px; border
 
     <section>
       <h2>Light</h2>
-      <div class="lever"><label for="hour">Time of day</label><output id="hour-out"></output><input id="hour" type="range" min="6" max="20" step="0.05" value="16.2"></div>
+      <div class="lever"><label for="hour">Time of day</label><output id="hour-out"></output><input id="hour" type="range" min="0" max="24" step="0.05" value="16.2"></div>
       <div class="lever"><label for="wind">Wind</label><output id="wind-out">Breeze</output><input id="wind" type="range" min="0" max="1" step="0.01" value="0.35"></div>
       <div class="lever"><label for="haze">Haze</label><output id="haze-out">Off</output><input id="haze" type="range" min="0" max="2" step="0.05" value="0"></div>
     </section>
