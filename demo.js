@@ -147,6 +147,7 @@ const fresh = {
   homestead: async () => (await fetch('scenes/homestead.json')).json(),
   ridge: async () => (await fetch('scenes/ridge.json')).json(),
   texas: async () => (await fetch('scenes/texas.json')).json(),
+  lot: async () => (await fetch('scenes/lot.json')).json(),
   outdoors: async () => ({ use: 'outdoors', terrain: 'hill-country' }),
 };
 const views = {
@@ -155,6 +156,7 @@ const views = {
   homestead: { doc: null, eye: [24, 8, 30], target: [-2, 2.5, -8] },
   ridge: { doc: null, eye: [64, 20, 54], target: [4, 5, -14] },
   texas: { doc: null, eye: [46, 12, 44], target: [-8, 5, -16] },
+  lot: { doc: null, eye: [30, 19, 34], target: [0, 0.5, -1] },
   outdoors: { doc: null, eye: [92, 40, 108], target: [0, 4, -14] },
 };
 let view = 'homestead';
@@ -480,6 +482,11 @@ const losP = new THREE.Vector3();
 function keepAboveGround() {
   if (!ground) return;
   const t = controls.target, c = camera.position, h = ground.heightAt;
+  // The view stays on the place: its target never leaves the authored ground, so nobody wanders
+  // out to the empty plain (horizon ground) or off the edge of a lot (cut ground).
+  const e = ground.extent, pad = ground.edge === 'cut' ? 2 : 0;
+  const cx = Math.min(Math.max(t.x, e.minX + pad), e.maxX - pad), cz = Math.min(Math.max(t.z, e.minZ + pad), e.maxZ - pad);
+  if (cx !== t.x || cz !== t.z) { c.x += cx - t.x; c.z += cz - t.z; t.x = cx; t.z = cz; }
   t.y = Math.max(t.y, h(t.x, t.z) + 0.3);
   const dist = c.distanceTo(t), clear = Math.max(1.2, dist * 0.03);
   let need = -Infinity;
